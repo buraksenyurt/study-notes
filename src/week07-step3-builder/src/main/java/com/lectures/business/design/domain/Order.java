@@ -3,6 +3,7 @@ package com.lectures.business.design.domain;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -164,8 +165,34 @@ public final class Order {
     // --- helpers end ---
 
     // --- queries start ---
-    
-    // Same as before
+    public Optional<OrderLine> lineFor(int productId) {
+        return lines.stream()
+                .filter(line -> line.productId() == productId)
+                .findFirst();
+    }
+
+    public int totalQuantity() {
+        return lines.stream()
+                .mapToInt(OrderLine::quantity)
+                .sum();
+    }
+
+    public boolean hasDiscountedLine() {
+        return lines.stream()
+                .anyMatch(line -> line.discount().signum() > 0);
+    }
+
+    public Optional<OrderLine> mostValuableLine() {
+        return lines.stream()
+                .max(Comparator.comparing(OrderLine::lineTotal));
+    }
+
+    public List<Integer> productIds() {
+        return lines.stream()
+                .map(OrderLine::productId)
+                .sorted()
+                .toList();
+    }
 
     // --- queries end ---
 }

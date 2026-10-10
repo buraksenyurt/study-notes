@@ -171,32 +171,32 @@ public final class Order {
     }
     // --- helpers end ---
 
- public Optional<OrderLine> lineFor(int productId) {
-    return lines.stream()
-            .filter(line -> line.productId() == productId)
-            .findFirst();
-}
+    public Optional<OrderLine> lineFor(int productId) {
+        return lines.stream()
+                .filter(line -> line.productId() == productId)
+                .findFirst();
+    }
 
-public int totalQuantity() {
-    return lines.stream()
-            .mapToInt(OrderLine::quantity)
-            .sum();
-}
+    public int totalQuantity() {
+        return lines.stream()
+                .mapToInt(OrderLine::quantity)
+                .sum();
+    }
 
-public boolean hasDiscountedLine() {
-    return lines.stream()
-            .anyMatch(line -> line.discount().signum() > 0);
-}
+    public boolean hasDiscountedLine() {
+        return lines.stream()
+                .anyMatch(line -> line.discount().signum() > 0);
+    }
 
-public Optional<OrderLine> mostValuableLine() {
-    return lines.stream()
-            .max(Comparator.comparing(OrderLine::lineTotal));
-}
+    public Optional<OrderLine> mostValuableLine() {
+        return lines.stream()
+                .max(Comparator.comparing(OrderLine::lineTotal));
+    }
 
-public List<Integer> productIds() {
-    return lines.stream()
-            .map(OrderLine::productId)
-            .sorted()
-            .toList();
-}
+    public List<Integer> productIds() {
+        return lines.stream()
+                .map(OrderLine::productId)
+                .sorted()
+                .toList();
+    }
 }
