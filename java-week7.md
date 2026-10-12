@@ -887,6 +887,17 @@ Bununla birlikte dikkat edilmesi gereken bazı durumlar vardır ve bunlar anti-p
 
 ---
 
+## Sorular
+
+Bu dersle ilgili olarak bizi araştırmaya konuları aşağıda bulabilirsiniz.
+
+- Static factory metot ile factory sınıfı aynı şey midir? Farkları nelerdir?
+- Builder desenini ne zaman kullanmalıyız? Avantajları ve dezavantajları nelerdir?
+- Her String türden alan için ayrı bir tip açmalı mıyız?
+- Güçlendirilmiş kimlik tiplerinin uygulama performansı üzerinde etkisi var mıdır?
+- OrderIdGenerator tek bir implementasyona sahip. O zaman neden bir interface yazdık?
+- Değer nesnelerini genellikle record olarak tanımladık. Sınıf olarak tanımlayamaz mıyız? Avantajları ve dezavantajları nelerdir?
+
 ## Bu bölümün kodu
 
 [`src/week07-object-creation`](src/week07-object-creation)
