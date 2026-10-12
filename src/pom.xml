@@ -33,6 +33,7 @@
         <module>week07-object-creation</module>
         <module>week07-step2-factory</module>
         <module>week07-step3-builder</module>
+        <module>week-08-step1-strategy</module>
     </modules>
 
     <dependencies>
