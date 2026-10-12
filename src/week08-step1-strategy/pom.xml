@@ -8,7 +8,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
     
-    <artifactId>week-08-step1-strategy</artifactId>
+    <artifactId>week08-step1-strategy</artifactId>
     <packaging>jar</packaging>
     <name>Week 08 / Step 1 — Strategy</name>
 </project>
