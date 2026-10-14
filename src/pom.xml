@@ -35,6 +35,7 @@
         <module>week07-step3-builder</module>
         <module>week08-step1-strategy</module>
         <module>week08-step2-specification</module>
+        <module>week08-step3-repository</module>
     </modules>
 
     <dependencies>
