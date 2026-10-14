@@ -376,9 +376,11 @@ Burada kafalarda bir soru işaret oluşabilir. Tek bir implementasyon yapacaksak
 
 - [`src/week08-step1-strategy`](src/week08-step1-strategy)
 - [`src/week08-step2-specification`](src/week08-step2-specification)
+- [`src/week08-step3-repository`](src/week08-step3-repository)
 
 ```powershell
 cd src
 mvn -pl week08-step1-strategy -am test
 mvn -pl week08-step2-specification -am test
+mvn -pl week08-step3-repository -am test
 ```
