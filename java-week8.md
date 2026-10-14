@@ -131,13 +131,164 @@ strateji desenini kullanabiliriz. Lakin, bunların hiçbiri söz konusu değilse
 
 ## Kuralı veri haline getirmek için Specification Deseni
 
+OrderBook isimli sınıfımızda ciro hesaplaması için kullanılan iki metodumuz yer alıyor, revenueByCustomer ve totalRevenue.
+
+```java
+public Map<CustomerId, Money> revenueByCustomer() {
+    return orders.stream()
+            .filter(order -> order.status() != OrderStatus.CANCELLED)
+            .collect(Collectors.groupingBy(
+                    Order::customerId,
+                    TreeMap::new,
+                    Collectors.reducing(Money.tl("0"), Order::total, Money::plus)));
+}
+
+public Money totalRevenue() {
+    return orders.stream()
+            .filter(order -> order.status() != OrderStatus.CANCELLED)
+            .map(Order::total)
+            .reduce(Money.tl("0"), Money::plus);
+}
+```
+
+Her iki metodun da ortak noktası, iptal edilmiş siparişleri filtreleme yaparken hesaba katmasıdır. Aslında bu bir iş kuralıdır ve kod içerisinde tekrar etmekte. Diğer yandan söz konusu iş kuralının belli bir adı yok. Yani `iptal edilen siparişler ciro hesaplamasına dahil edilmez` gibi bir iş kuralını kod içerisinde tekrar tekrar yazıyoruz ama yazdığımızın pek farkında değiliz. Buna göre aynı kuralı üçüncü bir metot içerisinde kullandığımızda da tekrar yazmak zorunda kalacağız. Bu tip bir durumda iş kuralını bir nesne haline getirip, kod içerisinde bu nesneyi kullanmak daha doğru bir yaklaşım olacaktır. Davranışsal tasarım desenlerinden biri olan Specification Deseni tam olarak bu ihtiyaca cevap verir. Öncelikle şartname için genel bir sözleşme hazırlamamız gerekiyor. Bunun kod tarafındaki karşılığı generic bir interface olacaktır.
+
+```java
+package com.lectures.business.design.domain;
+
+import java.util.Objects;
+
+@FunctionalInterface
+public interface Specification<T> {
+
+    boolean isSatisfiedBy(T candidate);
+
+    default Specification<T> and(Specification<T> other) {
+        Objects.requireNonNull(other, "other must not be null");
+        return candidate -> isSatisfiedBy(candidate) && other.isSatisfiedBy(candidate);
+    }
+
+    default Specification<T> or(Specification<T> other) {
+        Objects.requireNonNull(other, "other must not be null");
+        return candidate -> isSatisfiedBy(candidate) || other.isSatisfiedBy(candidate);
+    }
+
+    default Specification<T> not() {
+        return candidate -> !isSatisfiedBy(candidate);
+    }
+}
+```
+
+Örneğimizde generic bir interface türü söz konusu. `<T>` alias'ı ile arayüz içerisinde T görünen yerler implementasyonu yapan sınıfın belirlediği türe bürünür. Bu sayede aynı şartname farklı türlerdeki nesneler için ortak davranışları da sağlamış olur. Arayüzdeki metotların tamamı default olarak işaretlenmişlerdir. Şartname tipik olarak ve *(and)*, veya *(or)* ve değil *(not)* kombinasyonlarını sağlamaktadır. Her metot yine bir `Specification<T>` döner ve böylece zincirleme kural akışlarını oluşturabiliriz. Sanıyorum en güzeli bu şartnameyi baz alan bir sınıf tasarlamak olacak. Siparişler için söz konusu olabilecek iş kurallarını ele alalım.
+
+```java
+package com.lectures.business.design.domain;
+
+import java.time.LocalDate;
+
+public final class OrderSpecifications {
+
+    private OrderSpecifications() {
+    }
+
+    public static Specification<Order> inStatus(OrderStatus status) {
+        return order -> order.status() == status;
+    }
+
+    public static Specification<Order> cancelled() {
+        return inStatus(OrderStatus.CANCELLED);
+    }
+
+    public static Specification<Order> notCancelled() {
+        return cancelled().not();
+    }
+
+    public static Specification<Order> placedBy(CustomerId customerId) {
+        return order -> order.customerId().equals(customerId);
+    }
+
+    public static Specification<Order> worthAtLeast(Money threshold) {
+        return order -> order.total().compareTo(threshold) >= 0;
+    }
+
+    public static Specification<Order> orderedOnOrAfter(LocalDate date) {
+        return order -> !order.orderDate().isBefore(date);
+    }
+
+    public static Specification<Order> shippedTo(String country) {
+        return order -> order.shippingAddress()
+                .filter(address -> address.isIn(country))
+                .isPresent();
+    }
+}
+```
+
+Eğer davranışsal tasarım kalıplarından *(behavioral design patterns)* Specification kalıbının anlatımına bakarsak genellikle arayüz tabanlı türetmeler ile karşılaşabiliriz. Buradaki yaklaşımımız biraz daha farklı. OrderSpecification sınıfı tamamen statik metotlar sunuyur ve aslında her metot kendi çalışma mekaniğine sahip olmakla birlikte  geriye bir `Specification<Order>` dönüyor. Sınıfın kendisi türetme ile şartname'deki `and`, `or` ve `not` kombinasyonlarını sağlamıyor; bunun yerine her bir kuralı ayrı ayrı tanımlıyor ve gerektiğinde zincirleme olarak  `and`, `or` ve `not` kombinasyonlarına dahil edilebiliyor. Kod içerisinde şöyle bir iş kuralını kullanmak istediğimizi düşünelim; Almanya'ya giden, iptal edilmemiş ve toplam değeri en az 1000 TL olan siparişler. Bunu OrderSpecifications sınıfındaki metotları kullanarak şöyle ifade edebiliriz:
+
+```java
+package com.lectures.business.design;
+
+import com.lectures.business.design.domain.Address;
+import com.lectures.business.design.domain.Money;
+import com.lectures.business.design.domain.Order;
+import com.lectures.business.design.domain.OrderSpecifications;
+import com.lectures.business.design.domain.Specification;
+
+public class BusinessDesign {
+
+    public static void main(String[] args) {
+
+        var order1 = OrderBuilder.anOrder().withLine(11, "120.00", 30).build();
+        order1.shipTo(new Address("Berlin merkez", "Berlin", "10115", "Germany"));
+        var order2 = OrderBuilder.anOrder().withLine(12, "50.00", 10).build();
+        order2.shipTo(new Address("Munich merkez", "Munich", "80331", "Germany"));
+
+        Specification<Order> spec = OrderSpecifications.notCancelled()
+                .and(OrderSpecifications.shippedTo("Germany"))
+                .and(OrderSpecifications.worthAtLeast(Money.tl("1000")));
+
+        System.out.println("Order1 satisfies specification: " + spec.isSatisfiedBy(order1));
+        System.out.println("Order2 satisfies specification: " + spec.isSatisfiedBy(order2));
+
+    }
+}
+```
+
+Çok doğal olarak Order sınıfındaki revenueByCustomer ve totalRevenue gibi metotlar da benzer şekilde kullanılabilir ve gerektiğinde Specification kombinasyonlarına dahil edilebilir.
+
+```java
+private final Specification<Order> notCancelledOrders = OrderSpecifications.notCancelled();
+
+public Map<CustomerId, Money> revenueByCustomer() {
+    return orders.stream()
+            .filter(notCancelledOrders::isSatisfiedBy)
+            .collect(Collectors.groupingBy(
+                    Order::customerId,
+                    TreeMap::new,
+                    Collectors.reducing(Money.tl("0"), Order::total, Money::plus)));
+}
+
+public Money totalRevenue() {
+    return orders.stream()
+            .filter(notCancelledOrders::isSatisfiedBy)
+            .map(Order::total)
+            .reduce(Money.tl("0"), Money::plus);
+}
+```
+
+Şu anda OrderBook içerisindeki lambda ifadelerini terk edip specification tabanlı bir yaklaşıma geçtik. Tek kullanımlık ve yere bir filtre söz konusu ise lambda operatörünü kullanmaya devam etmek daha mantıklıdır. Bununla birlikte kural bir iş terimine karşılık geliyorsa *(ciro hesaplamasına dahil edilebilen siparişler gibi)*, birden fazla yerde kullanılıyorlsa ya da bileşik halde ifadelere ihtiyaç duyuluyorsa specification tabanlı yaklaşım daha uygun olacaktır. Zira görüldüğü üzere şartname yazmak da kodu uzatabilir.
+
+## Repository Nesnesinin İnşası
+
 // DEVAM EDECEK
 
 ## Bu bölümün kodu
 
-[`src/week08-step1-strategy`](src/week08-step1-strategy)
+- [`src/week08-step1-strategy`](src/week08-step1-strategy)
+- [`src/week08-step2-specification`](src/week08-step2-specification)
 
 ```powershell
 cd src
-mvn -pl week08-strategy -am test
+mvn -pl week08-step1-strategy -am test
+mvn -pl week08-step2-specification -am test
 ```
