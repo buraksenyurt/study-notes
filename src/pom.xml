@@ -34,6 +34,7 @@
         <module>week07-step2-factory</module>
         <module>week07-step3-builder</module>
         <module>week08-step1-strategy</module>
+        <module>week08-step2-specification</module>
     </modules>
 
     <dependencies>
