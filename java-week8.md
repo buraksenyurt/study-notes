@@ -280,6 +280,96 @@ public Money totalRevenue() {
 
 ## Repository Nesnesinin İnşası
 
+Şu anda siparişleri bellek üzerindeki bir koleksiyon aracılığıyla yönetiyoru *(in-memory repository)*. Bu yaklaşım küçük ölçekli uygulamalar ve testler için uygun olmakla birlikte, gerçek dünya senaryolarında kalıcı bir veri deposuna ihtiyaç duyacağımız da aşikardır. Verinin kalıcı saklanması disk üzerinde kayıt altına alınması anlamına gelirken kurumsal çaptaki çözümler bunu veritabanları üzerinde gerçekleştirir. Bu bölümde OrderBook tasarımımızı ikiye bölüp bir arayüz implemantasyonu ile kullanmaya başlayacağız. Bunu yaparken paket yapısında da değişikliğe gideceğiz ve yavaş yavaş asıl ulaşmak istediğimiz proje iskeletini de ortaya çıkarmaya başlayacağız.
+
+İlk olarak persistence isimli yeni bir paket açalım ve içerisine OrderRepository isimli aşağıda kod içeriği yer alan sözleşmeyi ekleyelim.
+
+```java
+package com.lectures.business.design.repository;
+
+import com.lectures.business.design.domain.Order;
+import com.lectures.business.design.domain.OrderId;
+import com.lectures.business.design.domain.OrderNotFoundException;
+import com.lectures.business.design.domain.Specification;
+import java.util.List;
+import java.util.Optional;
+
+public interface OrderRepository {
+
+    void save(Order order);
+
+    Optional<Order> findById(OrderId orderId);
+
+    List<Order> findAll();
+
+    List<Order> findAll(Specification<Order> specification);
+
+    long count();
+
+    default Order getById(OrderId orderId) {
+        return findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+}
+```
+
+Tipik olarak bir repository veri manipülasyonu için gerekli davranışları temelde sunar. Veriyi kaydetm *(save)*, belirli bir kimlik ile arama *(findById)*, tüm veriyi listeleme *(findAll)* ya da belirli bir şartnameye göre filtreleme *(findAll(Specification))* gibi operasyonları içerir. Örneğimizde bunlar ek olarak her repository için varsayılan bir davranışı da *(getById)* sunmaktayız. Şimdi bu sözleşmenin örnek bir implementasyonuna geçelim. In-memory çalışan bir repository, veriyi bellekte tutarak bu operasyonları ele alabilir. Bunu da sözleşme ile aynı paket içerisinde konumlandırabiliriz.
+
+```java
+package com.lectures.business.design.repository;
+
+import com.lectures.business.design.domain.Order;
+import com.lectures.business.design.domain.OrderId;
+import com.lectures.business.design.domain.Specification;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
+public final class InMemoryOrderRepository implements OrderRepository {
+
+    private final Map<OrderId, Order> orders = new LinkedHashMap<>();
+
+    @Override
+    public void save(Order order) {
+        Objects.requireNonNull(order, "order must not be null");
+        orders.put(order.orderId(), order);
+    }
+
+    @Override
+    public Optional<Order> findById(OrderId orderId) {
+        return Optional.ofNullable(orders.get(orderId));
+    }
+
+    @Override
+    public List<Order> findAll() {
+        return List.copyOf(orders.values());
+    }
+
+    @Override
+    public List<Order> findAll(Specification<Order> specification) {
+        Objects.requireNonNull(specification, "specification must not be null");
+        return orders.values().stream()
+                .filter(specification::isSatisfiedBy)
+                .sorted(Comparator.comparing(Order::orderId))
+                .toList();
+    }
+
+    @Override
+    public long count() {
+        return orders.size();
+    }
+}
+```
+
+Artık elimizde in-memory çalışan bir repository örneği mevcut. Bu repository, veriyi bellekte tutarak temel CRUD operasyonlarını ve şartnameye dayalı filtrelemeyi gerçekleştirme. Buna göre aslında önceden kullandığımız OrderBook nesnesine de ihtiyacımız kalmayacak.
+
+Burada kafalarda bir soru işaret oluşabilir. Tek bir implementasyon yapacaksak neden bir sözleşmeye ihtiyaç duyuyoruz? Aslında bu, yazılım tasarımında esneklik ve genişletilebilirlik açısından önemli bir yaklaşımdır. İleride farklı veri kaynakları için yeni repository implementasyonları eklemek istediğimizde, mevcut kodu değiştirmeden sadece yeni bir sınıf ekleyerek bu ihtiyacı karşılayabiliriz. Bu hem test koşumlarında, hemde uygulama servislerindeki bağımlılıkların yönetiminde büyük kolaylık sağlar. İlerleyen bölümlerde bunun avantajını daha net görebileceğiz.
+
+## Dış dünya CustomerId'yi bilmediğinde *(Mapper Kullanımı)*
+
 // DEVAM EDECEK
 
 ## Bu bölümün kodu
