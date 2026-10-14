@@ -39,6 +39,10 @@ public final class Address {
         return country;
     }
 
+    public boolean isIn(String countryName) {
+        return country.equalsIgnoreCase(countryName);
+    }
+
     @Override
     public boolean equals(Object other) {
         if (this == other) {

@@ -59,15 +59,6 @@ public final class OrderBook {
                         Collectors.counting()));
     }
 
-    public Map<CustomerId, Money> revenueByCustomer() {
-        return orders.stream()
-                .filter(order -> order.status() != OrderStatus.CANCELLED)
-                .collect(Collectors.groupingBy(
-                        Order::customerId,
-                        TreeMap::new,
-                        Collectors.reducing(Money.tl("0"), Order::total, Money::plus)));
-    }
-
     public List<CustomerId> topCustomers(int limit) {
         return revenueByCustomer().entrySet().stream()
                 .sorted(Map.Entry.<CustomerId, Money>comparingByValue().reversed())
@@ -76,9 +67,20 @@ public final class OrderBook {
                 .toList();
     }
 
+    private final Specification<Order> notCancelledOrders = OrderSpecifications.notCancelled();
+
+    public Map<CustomerId, Money> revenueByCustomer() {
+        return orders.stream()
+                .filter(notCancelledOrders::isSatisfiedBy)
+                .collect(Collectors.groupingBy(
+                        Order::customerId,
+                        TreeMap::new,
+                        Collectors.reducing(Money.tl("0"), Order::total, Money::plus)));
+    }
+
     public Money totalRevenue() {
         return orders.stream()
-                .filter(order -> order.status() != OrderStatus.CANCELLED)
+                .filter(notCancelledOrders::isSatisfiedBy)
                 .map(Order::total)
                 .reduce(Money.tl("0"), Money::plus);
     }
