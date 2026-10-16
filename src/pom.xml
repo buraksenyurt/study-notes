@@ -37,6 +37,7 @@
         <module>week08-step2-specification</module>
         <module>week08-step3-repository</module>
         <module>week08-step4-mappers</module>
+        <module>week09-maven-modules-and-archunit</module>
     </modules>
 
     <dependencies>

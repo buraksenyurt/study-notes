@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.lectures</groupId>
+        <artifactId>study-notes-snapshots</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>week09-maven-modules-and-archunit</artifactId>
+    <packaging>pom</packaging>
+    <name>Week 09 - Maven Modules and ArchUnit</name>
+    <description>
+        The chapter's end state is a reactor, not a single module, so this
+        snapshot is a reactor too. Layers stay inside the business module as
+        packages; no module is a layer.
+    </description>
+
+    <properties>
+        <archunit.version>1.5.1</archunit.version>
+        <jar.plugin.version>3.4.2</jar.plugin.version>
+    </properties>
+
+    <modules>
+        <module>shared-kernel</module>
+        <module>sales</module>
+        <module>app</module>
+        <module>quality/architecture-tests</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.lectures</groupId>
+                <artifactId>week09-shared-kernel</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.lectures</groupId>
+                <artifactId>week09-sales</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.lectures</groupId>
+                <artifactId>week09-sales</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <!-- study-notes runs on JUnit 6, so the junit6 artifact, not junit5 -->
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit6</artifactId>
+                <version>${archunit.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${jar.plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
