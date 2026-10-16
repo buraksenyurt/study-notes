@@ -1,5 +1,9 @@
 package com.lectures.business.design;
 
+import com.lectures.business.design.api.CustomerRevenue;
+import com.lectures.business.design.api.OrderSummary;
+import com.lectures.business.design.application.OrderMapper;
+import com.lectures.business.design.application.SalesReport;
 import com.lectures.business.design.domain.Address;
 import com.lectures.business.design.domain.Money;
 import com.lectures.business.design.domain.Order;
@@ -43,5 +47,28 @@ public class BusinessDesign {
         System.out.println("Order2 satisfies specification: " + spec.isSatisfiedBy(repository.getById(OrderId.of(10249))));
         System.out.println("Order3 satisfies specification: " + spec.isSatisfiedBy(repository.getById(OrderId.of(10250))));
         System.out.println("Order4 satisfies specification: " + spec.isSatisfiedBy(repository.getById(OrderId.of(10251))));
+
+        SalesReport report = new SalesReport(repository, new OrderMapper());
+
+        System.out.println();
+        System.out.println("Status based customer counts;");
+        report.countByStatus().forEach((status, count)
+                -> System.out.println(status + ": " + count));
+
+        System.out.println();
+        System.out.println("Revenue (by customer);");
+        for (CustomerRevenue row : report.revenueByCustomer()) {
+            System.out.println(row.customerId() + ": " + row.revenue() + " " + row.currency());
+        }
+
+        System.out.println();
+        System.out.println("Total;");
+        System.out.println(report.totals());
+
+        System.out.println();
+        System.out.println("Orders of VINET (OrderSummary);");
+        for (OrderSummary summary : report.ordersOf("VINET")) {
+            System.out.println(summary);
+        }
     }
 }
