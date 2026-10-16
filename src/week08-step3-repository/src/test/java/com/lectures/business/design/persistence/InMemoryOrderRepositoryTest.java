@@ -6,8 +6,6 @@ import com.lectures.business.design.domain.Order;
 import com.lectures.business.design.domain.OrderId;
 import com.lectures.business.design.domain.OrderNotFoundException;
 import com.lectures.business.design.domain.OrderSpecifications;
-import com.lectures.business.design.repository.InMemoryOrderRepository;
-import com.lectures.business.design.repository.OrderRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.BeforeEach;

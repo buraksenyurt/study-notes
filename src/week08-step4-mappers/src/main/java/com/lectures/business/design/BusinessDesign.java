@@ -6,8 +6,8 @@ import com.lectures.business.design.domain.Order;
 import com.lectures.business.design.domain.OrderId;
 import com.lectures.business.design.domain.OrderSpecifications;
 import com.lectures.business.design.domain.Specification;
-import com.lectures.business.design.repository.InMemoryOrderRepository;
-import com.lectures.business.design.repository.OrderRepository;
+import com.lectures.business.design.persistence.InMemoryOrderRepository;
+import com.lectures.business.design.persistence.OrderRepository;
 
 public class BusinessDesign {
 

@@ -1,4 +1,4 @@
-package com.lectures.business.design.repository;
+package com.lectures.business.design.persistence;
 
 import com.lectures.business.design.domain.Order;
 import com.lectures.business.design.domain.OrderId;
