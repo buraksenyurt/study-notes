@@ -4,7 +4,7 @@ import com.lectures.business.design.domain.Customer;
 
 public class BusinessDesign {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) {       
         try {
             Customer bob = new Customer(
                     "BOBIB",
