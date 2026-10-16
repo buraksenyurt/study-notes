@@ -285,7 +285,7 @@ public Money totalRevenue() {
 İlk olarak persistence isimli yeni bir paket açalım ve içerisine OrderRepository isimli aşağıda kod içeriği yer alan sözleşmeyi ekleyelim.
 
 ```java
-package com.lectures.business.design.repository;
+package com.lectures.business.design.persistence;
 
 import com.lectures.business.design.domain.Order;
 import com.lectures.business.design.domain.OrderId;
@@ -316,7 +316,7 @@ public interface OrderRepository {
 Tipik olarak bir repository veri manipülasyonu için gerekli davranışları temelde sunar. Veriyi kaydetm *(save)*, belirli bir kimlik ile arama *(findById)*, tüm veriyi listeleme *(findAll)* ya da belirli bir şartnameye göre filtreleme *(findAll(Specification))* gibi operasyonları içerir. Örneğimizde bunlar ek olarak her repository için varsayılan bir davranışı da *(getById)* sunmaktayız. Şimdi bu sözleşmenin örnek bir implementasyonuna geçelim. In-memory çalışan bir repository, veriyi bellekte tutarak bu operasyonları ele alabilir. Bunu da sözleşme ile aynı paket içerisinde konumlandırabiliriz.
 
 ```java
-package com.lectures.business.design.repository;
+package com.lectures.business.design.persistence;
 
 import com.lectures.business.design.domain.Order;
 import com.lectures.business.design.domain.OrderId;
@@ -370,17 +370,243 @@ Burada kafalarda bir soru işaret oluşabilir. Tek bir implementasyon yapacaksak
 
 ## Dış dünya CustomerId'yi bilmediğinde *(Mapper Kullanımı)*
 
-// DEVAM EDECEK
+Uygulamada kullandığımız **CustomerId** veya **OrderId** gibi veri yapılarını göz önüne alalım. Bu nesneler domain içerisinde anlamlı olan güçlendirilmiş kimlik türlerindendir. Şimdi birde dış dünyada bunların karşılıkları olduğunu düşünelim. Örneğin bir satış raporunun dış dünyaya servis olarak sunulduğu noktada api modülünde aşağıdaki gibi bir **record** türünü kullanabiliriz.
+
+```java
+package com.lectures.business.design.api;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+public record OrderSummary(
+        int orderId,
+        String customerId,
+        String status,
+        LocalDate orderDate,
+        BigDecimal total,
+        String currency,
+        int lineCount,
+        String shippingCity) {
+
+}
+```
+
+Bu **record**, bir satış işlemi ile alakalı özet sipariş bilgisini dış dünyaya sunacak veriyi temsil eder. Bu sayede domain içerisindeki güçlü tipler ve kimlikler, dış dünyaya uygun basit veri tiplerine dönüştürülmüş olur. Dış dünya bileşenleri bu **api** sınırına gelen istemciler olarak düşünülebilir. Dış dünyaya ilkel türlerden oluşan veri yapıları sunmak, domain modelinin karmaşıklığını dış dünyadan izole etmenin de bir yoludur. Elbette satış raporunun sunacağı tek şey sipariş özetleri değil. Müşteri bazlı ciro satırları ve raporun genel toplamı da dış dünyaya açılabilir. Bunlar için de **api** modülüne iki **record** daha tanımlayalım.
+
+```java
+package com.lectures.business.design.api;
+
+import java.math.BigDecimal;
+
+public record CustomerRevenue(String customerId, BigDecimal revenue, String currency) {
+
+}
+```
+
+```java
+package com.lectures.business.design.api;
+
+import java.math.BigDecimal;
+
+public record SalesTotals(long orderCount, BigDecimal revenue, String currency) {
+
+}
+```
+
+Dikkat edileceği üzere her üç **record**' da yalnızca String, BigDecimal, LocalDate, int ve long gibi ilkel *(primitive)* ya da standart türlerden oluşuyor. İçlerinde ne **CustomerId** ne **Money** ne de **OrderStatus** gibi domain türleri bulunuyor. Bir sınır tipinin tanımı tam olarak da bu. Özellikle **Money** türünün ikiye ayrıldığına dikkat edelim. Tutar **BigDecimal** olarak, para birimi ise **String** bir kur kodu olarak ele alınıyor.
+
+Dolayısıyla karşımızda şöyle bir ihtiyaç bulunmakta. **OrderId**, **CustomerId** ve **Money** türlerinin sarmaladığı değerlerin dış dünyaya uygun ilkel türlere dönüştürülmesini nasıl sağlarız? Bu tip dönüşümler genellikle mapper olarak da ifade edilen yardımcıların işi oluyor. Aşağıdaki OrderMapper sınıfının görevi tam olarak bu.
+
+```java
+package com.lectures.business.design.application;
+
+import com.lectures.business.design.api.CustomerRevenue;
+import com.lectures.business.design.api.OrderSummary;
+import com.lectures.business.design.domain.Address;
+import com.lectures.business.design.domain.CustomerId;
+import com.lectures.business.design.domain.Money;
+import com.lectures.business.design.domain.Order;
+import java.util.List;
+import java.util.Objects;
+
+public final class OrderMapper {
+
+    public OrderSummary toSummary(Order order) {
+        Objects.requireNonNull(order, "order must not be null");
+        return new OrderSummary(
+                order.orderId().value(),
+                order.customerId().value(),
+                order.status().name(),
+                order.orderDate(),
+                order.total().amount(),
+                order.total().currency().getCurrencyCode(),
+                order.lines().size(),
+                order.shippingAddress().map(Address::city).orElse(null));
+    }
+
+    public List<OrderSummary> toSummaries(List<Order> orders) {
+        Objects.requireNonNull(orders, "orders must not be null");
+        return orders.stream().map(this::toSummary).toList();
+    }
+
+    public CustomerRevenue toRevenue(CustomerId customerId, Money revenue) {
+        Objects.requireNonNull(customerId, "customerId must not be null");
+        Objects.requireNonNull(revenue, "revenue must not be null");
+
+        return new CustomerRevenue(
+                customerId.value(),
+                revenue.amount(),
+                revenue.currency().getCurrencyCode());
+    }
+}
+```
+
+Bu sınıfın **application** isimli yeni bir modülde olduğuna dikkat edelim. Görevi, domaindeki nesneleri dış satış raporu için kullanılacak veri yapılarına dönüştürmek. `toSummary()` metodunun aldığı ve döndürdüğü parametre bunun bir kanıtı. Tek yönlü çalışan bir nesnedir yani domain nesnelerini alır ve dış dünyaya uygun veri yapılarına dönüştürür ancak ters yönde bir dönüşüm sağlamaz. Örneğimizde hem tek bir sipariş hem de bir sipariş listesi için **OrderSummary** örneklerinin oluşturulmasını sağlıyoruz. `toRevenue()` metodu ise para tutarının dönüştürülmesini tek bir yerde topluyor ve böylece ciro bilgisi üreten her yerde aynı dönüşüm yeniden yazılmak zorunda kalmıyor.
+
+Artık elimizde sipariş özetini ve ciro satırını ifade eden veri yapıları ile domain içeriğini bunlara çeviren bir mapper da olduğuna göre raporun kendisini ifade edecek sınıf tasarımını da yapabiliriz. Yine uygulama sınırında *(application boundary)* yer alan bir tip olması gerektiğinden onu da application modülü içerisine yerleştireceğiz.
+
+```java
+package com.lectures.business.design.application;
+
+import com.lectures.business.design.api.CustomerRevenue;
+import com.lectures.business.design.api.OrderSummary;
+import com.lectures.business.design.api.SalesTotals;
+import com.lectures.business.design.domain.CustomerId;
+import com.lectures.business.design.domain.Money;
+import com.lectures.business.design.domain.Order;
+import com.lectures.business.design.domain.OrderSpecifications;
+import com.lectures.business.design.persistence.OrderRepository;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+public final class SalesReport {
+
+    private final OrderRepository repository;
+    private final OrderMapper mapper;
+
+    public SalesReport(OrderRepository repository, OrderMapper mapper) {
+        this.repository = Objects.requireNonNull(repository, "repository must not be null");
+        this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
+    }
+
+    public Map<String, Long> countByStatus() {
+        return repository.findAll().stream()
+                .collect(Collectors.groupingBy(
+                        order -> order.status().name(),
+                        TreeMap::new,
+                        Collectors.counting()));
+    }
+
+    public List<CustomerRevenue> revenueByCustomer() {
+        return revenueTotals().entrySet().stream()
+                .map(entry -> mapper.toRevenue(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
+    public List<CustomerRevenue> topCustomers(int limit) {
+        return revenueTotals().entrySet().stream()
+                .sorted(Map.Entry.<CustomerId, Money>comparingByValue().reversed())
+                .limit(limit)
+                .map(entry -> mapper.toRevenue(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
+    public List<OrderSummary> ordersOf(String customerId) {
+        return mapper.toSummaries(
+                repository.findAll(OrderSpecifications.placedBy(CustomerId.of(customerId))));
+    }
+
+    public SalesTotals totals() {
+        List<Order> earning = earningOrders();
+        Money revenue = earning.stream()
+                .map(Order::total)
+                .reduce(Money.tl("0"), Money::plus);
+
+        return new SalesTotals(
+                earning.size(),
+                revenue.amount(),
+                revenue.currency().getCurrencyCode());
+    }
+
+    private Map<CustomerId, Money> revenueTotals() {
+        return earningOrders().stream()
+                .collect(Collectors.groupingBy(
+                        Order::customerId,
+                        TreeMap::new,
+                        Collectors.reducing(Money.tl("0"), Order::total, Money::plus)));
+    }
+
+    private List<Order> earningOrders() {
+        return repository.findAll(OrderSpecifications.notCancelled());
+    }
+}
+```
+
+Satış raporunu tanımlayan sınıfımız bazı fonksiyonellikler sağlarken **OrderRepository** arayüzünü ve **OrderMapper** sınıfını kullanıyor. Bu nesnelerin constructor üzerinden içeriye alındığını fark etmişsinizdir. Özellikle **OrderRepository** açısından bakarsak tipik bir bağımlılık enjeksiyonu örneği görmektesiniz *(Dependency Injection)*. Bu sayede sınıfımız repository'nin somut bir implementasyonuna bağımlı olmadan çalışabilir ve test edilebilir. Yani istersek InMemory çalışan Order repository'sini kullanabiliriz istersek gerçek bir veritabanına bağlanan repository'yi kullanabiliriz. SalesReport sınıfına müdahale etmeden de kullanacağı repository'yi dışarıdan alabiliriz. Diğer metotlar daha çok raporun hazırlanması noktasında kullanılan public fonksiyonlardır. Örneğin statü bazlı sipariş sayıları, müşteri bazlı cirolar, en değerli müşteriler gibi gerçekten bir satış raporunda olabilecek bilgileri elde etmemizi sağlayan metotlar yer alır.
+
+Burada asıl dikkat edilmesi gereken nokta şu; *SalesReport sınıfının bütün public metotları api modülündeki tipleri döndürür.* `countByStatus` metodu `OrderStatus` enum'ı yerine onun adını yani bir `String` verir. `revenueByCustomer` ve `topCustomers` metotları `CustomerRevenue` listesi, `totals` metodu `SalesTotals`, `ordersOf` metodu da `OrderSummary` listesi döndürmektedir. Domain tarafındaki ara sonuçlar, yani `revenueTotals` ve `earningOrders`, private olarak kalırlar ve sınıfın dışına çıkmazlar.
+
+Bu kararın neden önemli olduğunu bir an için tersini düşünerek görebiliriz. SalesReport eğer `Map<CustomerId, Money>` döndürseydi kod pekala derlenirdi, zira application paketinin domain paketine erişmesine izin verilmekte. Üstelik testler de yeşil bayrak kaldırırdı. Ancak bu durumda raporu HTTP üzerinden yayınlayacak bir resource sınıfı `CustomerId` ve `Money` türlerini ellemek zorunda kalırdı. Buradaki kuralı şöyle ifade etmek mümkün; *sınır, dışarıya veri veren metodun kendisinde değil o metodun dönüş tipinde biter.*
+
+`ordersOf` metodunun imzası da üzerinde durmaya değer. Parametre olarak `String` alıyor ve içeride `CustomerId.of` ile domain tipine çeviriyor. Yani içe doğru dönüşüm de mapper'ın değil, tipin kendi fabrika metodunun işi olarak ele alınmaktadır. Doğrulama orada yaşadığı için geçersiz bir müşteri kodu rapora hiç ulaşmadan reddedilmektedir.
+
+> api modülünde neden bir arayüz *(façade)* tanımlamadığımızı merak edebilirsiniz. Böyle bir arayüzün varlık sebebi, HTTP katmanının yani rest paketinin application paketini hiç görmemesidir. Henüz rest paketine gelmediğimiz için arayüz şu an yalnızca fazladan bir dosya olacaktı. Şu anda SalesReport bir arayüz implemente etmiyor ancak sözleşmesi dönüş tiplerinde yazılı. api tiplerini döndürdüğü sürece onu ileride bir arayüzün arkasına almak sadece basit bir adım olacaktır. Önce ihtiyaçları görmeliyiz.
+
+Bu bölümle ilgili şu notları söyleyebiliriz:
+
+- CustomerId bilgisi uygulama sınırında String bir türe dönüşür. İlkel *(primitive)* bir tip olarak ele alınır ve bu sayede JSON, HTTP, veri tabanı gibi farklı ortamlara kolayca taşınabilir. Aynı şey Money için de geçerlidir; tutar ve para birimi iki ayrı ilkel alana iner.
+- OrderStatus enum'ı dışarıya enum olarak değil adıyla *(String)* açılır. Aksi halde sınır sözleşmemiz enum sabitlerinin adlarına bağlanmış olur ve ileride bir sabiti yeniden adlandırmak istemcileri bozar.
+- OrderMapper sınıfımızda `order.shippingAddress().map(Address::city).orElse(null))` şeklinde bir ifade yer alıyor. Domain içerisinde teslimat adresi opsiyonel olarak tutuluyor ve bu bizim koyduğumuz bir kural. Ancak bilgiyi dış dünyaya açarken optional'ın null olarak dönüşebilmesini sağlıyoruz. Zira dış dünya genellikle null değerleri anlayabilir ancak Optional tipini doğrudan anlayamaz *(JSON, HTTP gibi istemcileri düşünelim)*
+- Tasarlanan mapper sınıfı tek yönlüdür. Yani içerisinde `toSummary()` şeklinde bir metot varken tam tersi `toOrder()` yoktur. Bu son derece doğaldır, görevi gereğidir. Dışarıdan gelen primitive verilerden bir aggregate oluşturmak mapper'ların değil OrderFactory gibi fabrika sınıflarının sorumluluğundadır. Dikkat edilmesi gereken nokta; DTO *(Data Transfer Object)* nesnelerinden yararlanan bir mapper yazılıp aggregate kurallarının etrafından dolaşılabileceğidir. Buna dikkat etmemiz gerekiyor.
+- `SalesReportTest` içerisindeki `noDomainTypeLeaksFromTheReport` testi, SalesReport sınıfının public metotlarını dolaşıp dönüş ve parametre tiplerinde domain paketinin geçmediğini doğrular. Bu denetimi ilerleyen bölümlerde bir ArchUnit testine devredebiliriz.
+
+## Paketlerin Düzeni
+
+Geliştirdiğimiz proje modüler olarak iyileşmeye devam ediyor. Şu ana kadar ele aldığımız nihai sınıfları olmaları gereken paketlere yerleştiriyoruz. Aşağıdaki tabloda bu paket yapısının bir özetini görebilirsiniz.
+
+| **Class/record** | **Package** |
+| --- | --- |
+| Order, Customer, Money, Address, OrderLine | domain |
+| OrderStatus, Specification, OrderSpecifications, DiscountPolicy | domain |
+| OrderFactory, OrderIdGenerator | domain |
+| OrderRepository, InMemoryOrderRepository | persistence |
+| OrderSummary, CustomerRevenue, SalesTotals | api |
+| OrderMapper, SalesReport | application |
+
+Buna göre ilerleyen zamanlarda modüller arası bağımlılıkların yönünü ifade edeceğimiz ADR *(Architecture Decision Record)* dosyasına atıfta bulunabiliriz. Hatta bu kararları bir ArchUnit testi ile doğrulamayı tercih edeceğiz. Henüz resource'ları ekleyeceğimiz HTTP katmanına gelmediğimiz için bu kısmı şimdilik göz ardı edelim ancak var olan paketler arası erişim izinlerini aşağıdaki tablo ile özetleyebiliriz.
+
+| Erişen *(aşağı doğru okuyun)* / Erişilen *(sağa doğru okuyun)* | api | rest | application | domain | persistence |
+| --- | --- | --- | --- | --- | --- |
+| api | - | X | X | X | X |
+| rest | Evet | - | X | X | X |
+| application | Evet | X | - | Evet | Evet |
+| domain | X | X | X | - | X |
+| persistence | X | X | X | Evet | - |
+
+Bunu şöyle okumak gerekir; örneğin application paketi, api, domain ve persistence paketlerine erişebilir ancak rest paketine erişemez ya da domain paketi hiçbir pakete erişmez. Ya da şu şekilde ifade edebiliriz; api paketinde yer alan `OrderSummary` sınıfı diğer paketlerden erişilebilir ancak api paketinden başka bir pakete erişemez. *(OrderMapper ve SalesReport tarafından kullanıldığını hatırlayalım; tersi, yani api paketinden application paketine doğru bir erişim mümkün değildir)*
+
+> Paketlerle ilgili bilgileri eğitim amaçlı olarak `package-info.java` dosyalarına ekledik. Lütfen kontrol ediniz. Ayrıca bu dersteki örneklerle ilgili test sınıfları da ilgili paketlerde yer almaktadır. Onları da incelemeyi unutmayalım.
+
+---
+
+## Sorular
+
+// EKLENECEK
 
 ## Bu bölümün kodu
 
 - [`src/week08-step1-strategy`](src/week08-step1-strategy)
 - [`src/week08-step2-specification`](src/week08-step2-specification)
 - [`src/week08-step3-repository`](src/week08-step3-repository)
+- [`src/week08-step4-mappers`](src/week08-step4-mappers)
 
 ```powershell
 cd src
 mvn -pl week08-step1-strategy -am test
 mvn -pl week08-step2-specification -am test
 mvn -pl week08-step3-repository -am test
+mvn -pl week08-step4-mappers -am test
 ```
