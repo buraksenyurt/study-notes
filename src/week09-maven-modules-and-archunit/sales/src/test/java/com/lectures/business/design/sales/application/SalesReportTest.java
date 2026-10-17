@@ -1,9 +1,10 @@
-package com.lectures.business.design.sales.domain;
+package com.lectures.business.design.sales.application;
 
 import com.lectures.business.design.sales.api.CustomerRevenue;
 import com.lectures.business.design.sales.api.OrderSummary;
 import com.lectures.business.design.sales.application.OrderMapper;
 import com.lectures.business.design.sales.application.SalesReport;
+import com.lectures.business.design.sales.domain.OrderBuilder;
 import com.lectures.business.design.sales.persistence.InMemoryOrderRepository;
 import com.lectures.business.design.sales.persistence.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;

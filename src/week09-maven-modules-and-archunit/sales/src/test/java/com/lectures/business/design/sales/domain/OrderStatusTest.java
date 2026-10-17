@@ -1,4 +1,4 @@
-package com.lectures.business.design.sales.application;
+package com.lectures.business.design.sales.domain;
 
 import com.lectures.business.design.sales.domain.OrderStatus;
 import org.junit.jupiter.api.DisplayName;
