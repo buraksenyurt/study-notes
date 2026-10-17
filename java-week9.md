@@ -45,6 +45,64 @@ Dört modülden oluşan bu kurguda hiçbir modül bir katman *(layer)* değildir
 
 ## Sales Modülü
 
+Satış modülünün amacı, siparişlerin yönetilmesi ve işlenmesidir. Bu modül, `api`, `application`, `domain` ve `persistence` paketlerini içerir ve iş mantığını kapsar. Aşağıdaki yapıya sahiptir.
+
+```text
+├── api/            OrderSummary, CustomerRevenue, SalesTotals, package-info
+├── application/    OrderMapper, SalesReport, package-info
+├── domain/         Order, OrderLine, OrderStatus, Customer, CustomerId, OrderId,
+│                   OrderFactory, OrderIdGenerator, SequentialOrderIdGenerator,
+│                   OrderSpecifications, DiscountPolicy, VolumeDiscountPolicy,
+│                   CustomerTier, IncompleteOrderException,
+│                   InvalidStateTransitionException, OrderNotModifiableException,
+│                   OrderNotFoundException, package-info
+└── persistence/    OrderRepository, InMemoryOrderRepository, package-info
+```
+
+Benzer kurgu test modülü için de geçerlidir.
+
+```text
+├── domain/         OrderTest, OrderStatusTest, CustomerTest, OrderQueryTest,
+│                   CustomerIdTest, OrderIdTest, OrderFactoryTest, OrderBuilderTest,
+│                   DiscountPolicyTest, OrderSpecificationsTest, OrderBuilder
+├── persistence/    InMemoryOrderRepositoryTest
+└── application/    SalesReportTest, OrderMapperTest
+```
+
+Sales modülü, `shared-kernel` modülüne bağımlıdır ama tam tersi geçerli değildir. Üstelik bu bağımlılığı pom.xml dosyasında da açıkça görebiliriz.
+
+```xml
+ <dependencies>
+    <dependency>
+        <groupId>com.lectures</groupId>
+        <artifactId>week09-shared-kernel</artifactId>
+    </dependency>
+</dependencies>
+```
+
+Ufak bir deneme; Her şey week9 projesine taşındıktan sonra örneğin shared modülündeki Money sınıfına aşağıdaki satırı ekleyip derlemeyi deneyelim.
+
+```java
+import com.lectures.business.design.sales.domain.Order;
+```
+
+Aşağıdaki gibi bir derleme hatası alırız.
+
+![week09 compilation error](./images/week_09_00.png)
+
+`shared-kernel`'in pom dosyasında sales modülüne bir bağımlılık eklenmediği için bu derleme hatasının alınması normaldir ve zaten istediğim bir şeydir. Aynı modül içinde sadece paketlerden oluşan bir tasarımda kalsaydık bu tür bir bağımlılık sorunuyla karşılaşmazdık. Tabii tam tersi durumda, yani sales modülündeki Order içerisinden shared-kernel modülündeki sınıflara erişmeye çalıştığımızda derleme hatası almayız çünkü sales modülü shared-kernel modülüne bağımlıdır. Buna göre;
+
+| Hatalı Bağımlılık Yönü | Kim durdurur? |
+| --- | --- |
+| `shared-kernel` -> `sales` | Maven derleme zamanı |
+| `sales.domain` -> `sales.persistence` | Maven durdurmaz eğer ikisi de aynı jar içerisindeyse |
+
+## Uçtan Uca Çalışan Bir Smoke Test Yazmak
+
+Bir uygulamada yeni sürüm çıktığımızda veya build değişikliği yaptığımızda sistemin en temel ve kritik fonksiyonelliklerinin çalışıp çalışmadığını hızlıca doğrulamak için uygulanan ön seviye testleri **smoke test** olarak adlandırılır *(Bu terim aslında donanım dünyasından geliyor. Yeni bir elektronik devreye ilk kez elektrik verildiğinde duman çıkıp çıkmadığına yani bir şeyin yanıp yanmadığına bakılmasından...)* Bu testlerde amaç yazılımın tüm detaylarını test etmekten ziyade ana işlevlerin çalışıp çalışmadığını görerek daha kapsamlı *(QA - Quality Assurance)* testlere geçmeden önce hızlı bir kontrol sağlamaktır. Yani sistemin ana işlevleri bile çalışmıyorsa diğer detayları test etmek için vakit kabetmeye gerek yoktur. Artık projemiz biraz daha olgunlaştığına göre bu tip bir testi de ele almak doğru olacaktır. Örneğin repository'yi kuralım, satış raporunu alalım, rapordaki sayıların doğrulunu kontrol edelim. Bunun için daha önceden kullandığımız **OrderBuilder** sınıfından da yararlanabiliriz *(Builder pattern konusuna bakarken değinmiştik)* Ancak bu sınıfımız şu anda sales modülündeki test paketinde yer alıyor. Bu yüzden sales modülünden bir `test-jar` yayınlayıp *(publish)* diğer modüllerde kullanmayı deneyeceğiz. Aslında, OrderBuilder'ı main paketine taşımak da bir çözüm olarak görülebilir ama bu durumda Test Fixture nesnesini üretime bağımlı hale getirmiş oluruz *(Gereksiz bir şekilde `sales.jar` ile birlikte her yere dağılır)*
+
+> Test Fixture; Bir yazılım kodunu test etmeden önce sistemi belirli ve kontrollü bir başlangıç durumuna getiren hazırlık kodları ve verilerdir. Amaç,testlerin her defasında aynı koşullarda çalışmasını sağlamaktır. Örneğin bir teste başlamadan önce veritabanına önceden tanımlanmış örnek kullanıcıların atılması veya sahte ürün verilerinin yüklenmesi gibi. Derslerimizde ele aldığımız OrderBuilder tam olarak bu amaca hizmet etmektedir.
+
 // DEVAM EDECEK
 
 ---
