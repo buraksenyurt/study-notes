@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.lectures</groupId>
+        <artifactId>study-notes-snapshots</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>week10-application-services-and-di</artifactId>
+    <packaging>pom</packaging>
+    <name>Week 10 - Application Services and Manual Dependency Injection</name>
+    <description>
+        Use cases move into application services. Every collaborator arrives
+        through a constructor, and one class in the app module - the
+        composition root - is the only place that calls "new" on them.
+    </description>
+
+    <properties>
+        <archunit.version>1.5.1</archunit.version>
+        <jar.plugin.version>3.4.2</jar.plugin.version>
+    </properties>
+
+    <modules>
+        <module>shared-kernel</module>
+        <module>sales</module>
+        <module>app</module>
+        <module>quality/architecture-tests</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.lectures</groupId>
+                <artifactId>week10-shared-kernel</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.lectures</groupId>
+                <artifactId>week10-sales</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.lectures</groupId>
+                <artifactId>week10-sales</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit6</artifactId>
+                <version>${archunit.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${jar.plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
