@@ -256,7 +256,18 @@ Buna göre test sınıfındaki kuralların ne yaptığını ve hangi ADR'ye hizm
 
 ## Bir Kuralı Delmeyi Deneyelim
 
-// EKLENECEK
+ADR ile belirlenen kuralların gerçekten de ArcUnit testleri tarafından korunduğunu görmek için bir örnek yapalım. Bu amaçla `sales.domain` paketindeki Order sınıfına OrderRepository bağımlılığını eklemeyi deneyelim.
+
+```java
+public final class Order {
+    private OrderRepository orderRepository;
+```
+
+Tekrardan temiz bir build çalıştırdığımızda ilgili testin patladığını görmeliyiz.
+
+![Architecture test violation](./images/week_09_01.png)
+
+Diğer testleri de benzer şekilde kırmayı deneyebiliriz.
 
 ---
 
