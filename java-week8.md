@@ -594,7 +594,15 @@ Bunu şöyle okumak gerekir; örneğin application paketi, api, domain ve persis
 
 ## Sorular
 
-// EKLENECEK
+1. BusinessDesign örneğindeki `order.totalWith(p -> new BigDecimal(0.8))` satırını inceleyelim. `new BigDecimal(0.8)` hangi değeri üretir ve neden `new BigDecimal("0.8")` tercih edilmelidir? Ayrıca bu lambda %80 indirim mi yoksa %20 indirim mi uygular? Strateji nesnelerinin ürettiği oranlar için bir doğrulama nerede yapılmalıdır?
+2. OrderLine üzerinde zaten bir discount alanı varken totalWith metodu sipariş toplamına ikinci bir indirim uyguluyor. Bir müşteri hem GOLD seviyesinde hem de hacim indirimine hak kazanıyorsa hangi oran uygulanmalıdır? En yüksek olan mı, toplamları mı, yoksa ardışık olarak mı? Birden fazla DiscountPolicy nesnesini birleştiren bir *Composite* strateji nasıl tasarlanır?
+3. CustomerTier bir enum olarak DiscountPolicy arayüzünü uyguluyor. Bu yaklaşımın sınıf tabanlı bir stratejiye göre artıları ve eksileri nelerdir? İndirim oranlarının veritabanından veya bir konfigürasyon dosyasından okunması gerekseydi enum hâlâ doğru bir seçim olur muydu?
+4. OrderSpecifications içindeki kurallar lambda ifadeleri olarak yazıldı ve InMemoryOrderRepository bunları bellekteki koleksiyon üzerinde çalıştırıyor. Siparişler bir veritabanına taşındığında `findAll(Specification<Order>)` metodu milyonlarca kaydı belleğe çekmeden nasıl çalışabilir? *(Spring Data JPA'daki Specification ve JPA Criteria API yaklaşımlarını araştıralım)*
+5. `worthAtLeast(Money.tl("1000"))` şartnamesi farklı bir döviz cinsinden bir siparişle karşılaştığında ne olur? Bir şartnamenin false dönmek yerine exception fırlatması `and/or` zincirlerini nasıl etkiler?
+6. InMemoryOrderRepository sınıfında kullanılan `findAll()` metodu, siparişleri ekleme sırasına göre, `findAll(Specification)` ise orderId sırasına göre döndürmekte. Bu tutarsızlık ne gibi sorunlara yol açabilir? Repository sözleşmesi sıralamalar ile ilgili bir garanti vermeli midir?
+7. Repository'den alınan bir Order nesnesi üzerinde `confirm()` çağrıldığında, save metodu tekrar çağrılmadan da değişiklik repository'ye yansıyor mu? **Vaughn Vernon**'un *collection-oriented* ve *persistence-oriented* repository ayrımını araştıralım. Bu iki yaklaşımdan hangisi gerçek bir veritabanı implementasyonuna geçildiğinde daha az sürpriz yaratır bulmaya çalışalım.
+8. Tek bir implementasyonu olan OrderRepository arayüzü için "YAGNI *(You Aren't Gonna Need It)*" eleştirisi yapılabilir mi? Arayüzün testlerde ve bağımlılık yönünün tersine çevrilmesinde *(Dependency Inversion)* sağladığı fayda nedir? Bu arayüz persistence paketi yerine domain paketinde dursaydı ne değişirdi?
+9. OrderMapper dönüşümleri elle yazıyor. MapStruct veya ModelMapper gibi kütüphaneler bu işi otomatikleştirebilir. Derleme zamanında kod üreten bir mapper ile reflection tabanlı bir mapper arasındaki farklar nelerdir araştıralım. Domain tiplerinin sarmaladığı değerleri *(`CustomerId.value()`, `Money.amount()`)* açmak gibi kurallar otomatik bir mapper'da nasıl ifade edilir ve bu yaklaşım hangi riskleri taşır inceyelim.
 
 ## Bu bölümün kodu
 
