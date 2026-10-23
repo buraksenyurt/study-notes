@@ -296,6 +296,315 @@ public final class SteppingClock extends Clock {
 
 ## Composition Root
 
-Sipariş servisi tasarımına göre yapıcı metot üzerinden alınan bağımlılıklar dışarıdan gelmeli. Peki ya bu nesneleri kim oluşturacak?
+Sipariş servisi tasarımına göre yapıcı metot *(Constructor)* üzerinden alınan bağımlılıklar dışarıdan gelmeli. Peki ya bu nesneleri kim oluşturacak? Genellikle uygulamanın giriş noktasında mümkün olduğunca yakın bir yerde bu nesneler oluşturulur ve servislerin yapıcı metotlarına enjekte edilir. Bu yapı **Composition Root** olarak da adlandırılır. Geliştirmekte olduğumuz projede **app** modülünde konuşlandırabiliriz. Bu amaçla aşağıdaki kod içeriğine sahip **SalesModule** sınıfını yazarak devam edelim.
 
-// DEVAM EDECEK
+```java
+package com.lectures.business.design.app;
+
+import com.lectures.business.design.sales.application.OrderMapper;
+import com.lectures.business.design.sales.application.OrderService;
+import com.lectures.business.design.sales.application.SalesReport;
+import com.lectures.business.design.sales.domain.OrderFactory;
+import com.lectures.business.design.sales.domain.SequentialOrderIdGenerator;
+import com.lectures.business.design.sales.persistence.CustomerRepository;
+import com.lectures.business.design.sales.persistence.InMemoryCustomerRepository;
+import com.lectures.business.design.sales.persistence.InMemoryOrderRepository;
+import com.lectures.business.design.sales.persistence.OrderRepository;
+import java.time.Clock;
+import java.util.Objects;
+
+public final class SalesModule {
+
+    private final CustomerRepository customers;
+    private final OrderService orderService;
+    private final SalesReport salesReport;
+
+    private SalesModule(OrderRepository orders, CustomerRepository customers, Clock clock, int firstOrderId) {
+        this.customers = customers;
+
+        OrderMapper mapper = new OrderMapper();
+        OrderFactory factory = new OrderFactory(new SequentialOrderIdGenerator(firstOrderId), clock);
+
+        this.orderService = new OrderService(orders, customers, factory, mapper, clock);
+        this.salesReport = new SalesReport(orders, mapper);
+    }
+
+    public static SalesModule inMemory(Clock clock, int firstOrderId) {
+        Objects.requireNonNull(clock, "clock must not be null");
+        return new SalesModule(new InMemoryOrderRepository(), new InMemoryCustomerRepository(),
+                clock, firstOrderId);
+    }
+
+    public CustomerRepository customers() {
+        return customers;
+    }
+
+    public OrderService orderService() {
+        return orderService;
+    }
+
+    public SalesReport salesReport() {
+        return salesReport;
+    }
+}
+```
+
+Nesne grafiğini dikkatlice inceleyelim. **InMemoryOrderRepository** nesnesi bir kez oluşturulup hem **OrderService** hem de **SalesReport** nesnesine veriliyor. Yani her ikisi de aynı veri kaynağını kullanıyorlar. Hangi implementasyonun kullanılacağına dair tüm bilgi bu sınıfta toplanıyor. İlerleyen aşamalarda JDBC kullanan gibi ikinci bir fabrika metodu *(factory method)* eklediğimizde servis kodunda tek bir satır bile değiştirmemize gerek kalmayacak.
+
+Burada kafa karıştırıcı bir konu olabilir. **SalesModule** neden **sales** yerine **app** modülünde yazıldı? Bunun en büyük sebebi composition root nesnesinin, sistemi oluşturan tüm parçaları tanıyan tek yer olmasıdır. Dolayısıyla bağımlılık grafiğinin *(object graph)* en ucunda, uygulamanın giriş noktasında *(main, servlet container, test)* yer almalıdır. Eğer **sales** modülüne ekleseydik hangi implementasyonun kullanılacağına sales modülü karar verecekti.
+
+Artık `BusinessDesign.main` metodu siparişleri manuel oluşturmak yerine **SalesModule** nesnesini kullanabilir. Aşağıdaki kod parçasını deneyebiliriz.
+
+```java
+SalesModule module = SalesModule.inMemory(CLOCK, 10248);
+module.customers().save(new Customer(CustomerId.of("VINET"), "Vins et alcools Chevalier",
+        new Address("59 rue de l'Abbaye", "Reims", "51100", "France")));
+module.customers().save(new Customer(CustomerId.of("TOMSP"), "Toms Spezialitaten",
+        new Address("Luisenstr. 48", "Munster", "44087", "Germany")));
+
+OrderService orders = module.orderService();
+
+int shipped = orders.placeOrder(new PlaceOrderCommand("VINET",
+        List.of(OrderLineRequest.of(11, "14.00", 10)))).orderId();
+orders.confirm(shipped);
+orders.ship(shipped);
+
+int confirmed = orders.placeOrder(new PlaceOrderCommand("VINET",
+        List.of(OrderLineRequest.of(11, "10.00", 3)))).orderId();
+orders.confirm(confirmed);
+
+int cancelled = orders.placeOrder(new PlaceOrderCommand("TOMSP",
+        List.of(OrderLineRequest.of(11, "99.00", 100)))).orderId();
+orders.cancel(cancelled);
+
+OrderSummary draft = orders.placeOrder(new PlaceOrderCommand("TOMSP",
+        List.of(OrderLineRequest.of(11, "20.00", 51))));
+```
+
+Detaylı kullanımını görmek için **BusinessDesign** sınıfındaki **runSalesScenario** metoduna bakalım.
+
+### CDI *(Contexts and Dependency Injection)* Açısından Bakıldığında
+
+İdeal senaryoda, bağımlılıkların yönetimi ve nesne grafiğinin oluşturulması CDI tarafından yapılır. Yani **SalesModule** gibi bir fabrika sınıfına ihtiyaç duyulmaz. CDI, uygulamanın giriş noktasında gerekli nesneleri oluşturur ve bağımlılıklarını enjekte eder. Bu sayede servis kodu, hangi implementasyonun kullanıldığıyla ilgilenmez ve sadece iş mantığına odaklanır. Buna göre sipariş servisi aşağıdakine benzer bir yapıya bürünür.
+
+```java
+@ApplicationScoped
+public class OrderService {
+
+    private final OrderRepository orders;
+    private final CustomerRepository customers;
+    // ...
+
+    @Inject
+    public OrderService(OrderRepository orders, CustomerRepository customers,
+            OrderFactory factory, OrderMapper mapper, Clock clock) {
+        // aynı gövde
+    }
+}
+
+@ApplicationScoped
+public class JdbcOrderRepository implements OrderRepository { ... }
+
+@ApplicationScoped
+public class ClockProducer {
+
+    @Produces
+    @ApplicationScoped
+    Clock clock() {
+        return Clock.systemUTC();
+    }
+}
+```
+
+Aslında kodun container kullanımı sayesinde, servislerin ve repositorylerin oluşturulması ve bağımlılıklarının enjekte edilmesi otomatik olarak yapılır. Bu sayede uygulama, nesne yaratma ve bağımlılık yönetimi ile uğraşmak zorunda kalmaz ve sadece iş mantığına odaklanabilir. Ancak bu avantajı görebilmek için CDI olmadan bu bağımlılıkları nasıl yöneteceğimizi de bilmemiz gerekiyor. Şu noktaya kadar ki uğraşımızın en büyük sebebi bu. Bu açılardan her iki yaklaşımı kıyaslayarak bir özet çıkarmaya çalışalım.
+
+| **SalesModule Manuel DI Yaklaşımı** | **CDI Karşılığı** |
+| --- | --- |
+| `new OrderService(orders, customers, ...)` Constructor çağrısında parametreleri elle geçirme | Constructor üzerindeki `@Inject` anotasyonu ile CDI tarafından otomatik enjekte edilme |
+| **InMemoryOrderRepository** örneğinin bir kez oluşturulup paylaşılması | `@ApplicationScoped` anotasyonu ile *(uygulama boyunca tek bir örnek kullanılması)* |
+| **OrderRepository** için hangi sınıfın kullanılacağına karar vermek | Tip güvenli çözümleme *(typesafe resolution)*, birden fazla aday varsa `@Alternative` veya qualifier ile ilerlenir |
+| **Clock** nesnesinin oluşturulması | `@Produces` metodu |
+| Bağımlılık eksikse çalışma zamanında **NullPointerException *(NPE)*** | Uygulama açılırken `UnsatisfiedResolutionException` |
+
+Tablonun son satırı önemli. CDI eksik veya belirsiz bir bağımlılığı uygulama ayağa kalkarken *(deployment sırasında)* yakalar. Bizim elle yazdığımız composition root'ta ise aynı güvenceyi constructor'daki `Objects.requireNonNull` çağrıları ve `AppSmokeTest` sağlıyor. Mantık aynı, sadece otomasyon seviyesi farklı. C# geliştiricileri için `SalesModule` sınıfının `Program.cs` dosyasındaki `builder.Services.AddSingleton<IOrderRepository, InMemoryOrderRepository>()` satırlarının elle yazılmış hali olduğunu söyleyebiliriz.
+
+## Testler
+
+İlk olarak OrderService sınıfı için gerekli testleri yazalım. Bu sınıfta bir composition root gibi davranıyor olacak. Hangi implementasyonun kullanılacağına `@BeforeEach` anotasyonu ile işaretlenmiş bir setup metodunda karar verilecek. Sınıfı aşağıdaki gibi yazabiliriz.
+
+```java
+package com.lectures.business.design.sales.application;
+
+import com.lectures.business.design.sales.api.OrderLineRequest;
+import com.lectures.business.design.sales.api.OrderSummary;
+import com.lectures.business.design.sales.api.PlaceOrderCommand;
+import com.lectures.business.design.sales.domain.Customer;
+import com.lectures.business.design.sales.domain.CustomerId;
+import com.lectures.business.design.sales.domain.CustomerNotFoundException;
+import com.lectures.business.design.sales.domain.InvalidStateTransitionException;
+import com.lectures.business.design.sales.domain.OrderFactory;
+import com.lectures.business.design.sales.domain.OrderId;
+import com.lectures.business.design.sales.domain.OrderNotFoundException;
+import com.lectures.business.design.sales.domain.SequentialOrderIdGenerator;
+import com.lectures.business.design.sales.persistence.CustomerRepository;
+import com.lectures.business.design.sales.persistence.InMemoryCustomerRepository;
+import com.lectures.business.design.sales.persistence.InMemoryOrderRepository;
+import com.lectures.business.design.sales.persistence.OrderRepository;
+import com.lectures.business.design.shared.kernel.Address;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class OrderServiceTest {
+
+    private SteppingClock clock;
+    private OrderRepository orders;
+    private OrderService service;
+
+    @BeforeEach
+    void setUp() {
+        clock = new SteppingClock("1996-07-04T09:00:00Z");
+        orders = new InMemoryOrderRepository();
+        CustomerRepository customers = new InMemoryCustomerRepository();
+        customers.save(new Customer(CustomerId.of("VINET"), "Vins et alcools Chevalier",
+                new Address("59 rue de l'Abbaye", "Reims", "51100", "France")));
+
+        service = new OrderService(orders, customers,
+                new OrderFactory(new SequentialOrderIdGenerator(10248), clock),
+                new OrderMapper(), clock);
+    }
+
+    private OrderSummary placeVinetOrder() {
+        return service.placeOrder(new PlaceOrderCommand("VINET", List.of(
+                OrderLineRequest.of(11, "14.00", 12),
+                OrderLineRequest.of(42, "9.80", 10))));
+    }
+
+    @Test
+    @DisplayName("placeOrder drafts, fills and saves an order for a known customer")
+    void placeOrderCreatesADraft() {
+        OrderSummary summary = placeVinetOrder();
+
+        assertThat(summary.orderId()).isEqualTo(10248);
+        assertThat(summary.status()).isEqualTo("DRAFT");
+        assertThat(summary.orderDate()).isEqualTo(LocalDate.of(1996, 7, 4));
+        assertThat(summary.total()).isEqualByComparingTo(new BigDecimal("266.00"));
+        assertThat(summary.shippingCity()).isEqualTo("Reims");
+        assertThat(orders.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("an unknown customer stops the use case before anything is saved")
+    void unknownCustomerIsRejected() {
+        assertThatThrownBy(() -> service.placeOrder(
+                new PlaceOrderCommand("ALFKI", List.of(OrderLineRequest.of(11, "14.00", 1)))))
+                .isInstanceOf(CustomerNotFoundException.class);
+        assertThat(orders.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("ship takes 'today' from the injected clock")
+    void shipUsesTheClock() {
+        int id = placeVinetOrder().orderId();
+        service.confirm(id);
+
+        clock.advance(Duration.ofDays(12));
+        service.ship(id);
+
+        assertThat(orders.getById(OrderId.of(id)).shippedDate())
+                .contains(LocalDate.of(1996, 7, 16));
+    }
+
+    @Test
+    @DisplayName("the service coordinates, the aggregate still decides")
+    void rulesStayInTheAggregate() {
+        int id = placeVinetOrder().orderId();
+
+        assertThatThrownBy(() -> service.ship(id))
+                .isInstanceOf(InvalidStateTransitionException.class);
+        assertThat(service.cancel(id).status()).isEqualTo("CANCELLED");
+    }
+
+    @Test
+    @DisplayName("an unknown order id surfaces as OrderNotFoundException")
+    void unknownOrderIsRejected() {
+        assertThatThrownBy(() -> service.confirm(99999))
+                .isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> service.getOrder(99999))
+                .isInstanceOf(OrderNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("the service refuses to be built without its collaborators")
+    void collaboratorsAreRequired() {
+        assertThatThrownBy(() -> new OrderService(null, new InMemoryCustomerRepository(),
+                new OrderFactory(new SequentialOrderIdGenerator(1), clock), new OrderMapper(), clock))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("orders");
+    }
+}
+```
+
+Dikkat edileceği üzere setUp metodun `@BeforeEach` anotasyonu ile işaretlendi. Her birim test çalıştırılmadan önce bu metod çağrılır ve testin ihtiyaç duyduğu nesneler otomatikman hazırlanır. Bu arada **rulesStayInTheAggregate** testi, iş kurallarının servis tarafından değil, aggregate tarafından yönetildiğini doğrulamak için yazıldı. Servis tarafı taslak statüsündeki bir siparişin kargolanamayacağını bilmez, bunu sadece Order sınıfı biliyor. Servisi yaptığı tek şey bu kuralın sonucunu çağıran tarafa iletmek.
+
+Bununla birlikte app modülündeki AppSmokeTest sınıfı da artık bir composition root nesnesini test ediyor. Dolayısıyla var olan içeriğini aşağıdaki gibi değiştiriyoruz. Görevi servisin yazdığı siparişleri raporun okuyabildiğini doğrulamaktır. Bu aynı repository örneğinin hem servis hem de rapor tarafından kullanıldığını gösteren de bir ispat esasında.
+
+```java
+package com.lectures.business.design.app;
+
+import com.lectures.business.design.sales.api.CustomerRevenue;
+import com.lectures.business.design.sales.api.OrderLineRequest;
+import com.lectures.business.design.sales.api.PlaceOrderCommand;
+import com.lectures.business.design.sales.application.OrderService;
+import com.lectures.business.design.sales.application.SteppingClock;
+import com.lectures.business.design.sales.domain.Customer;
+import com.lectures.business.design.sales.domain.CustomerId;
+import com.lectures.business.design.shared.kernel.Address;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.List;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+
+class AppSmokeTest {
+
+    @Test
+    @DisplayName("the composition root wires one graph: what the service writes, the report reads")
+    void theWiredGraphWorksEndToEnd() {
+        SteppingClock clock = new SteppingClock("1996-07-04T09:00:00Z");
+        SalesModule module = SalesModule.inMemory(clock, 10248);
+        module.customers().save(new Customer(CustomerId.of("VINET"), "Vins et alcools Chevalier",
+                new Address("59 rue de l'Abbaye", "Reims", "51100", "France")));
+
+        OrderService service = module.orderService();
+        int shipped = service.placeOrder(new PlaceOrderCommand("VINET",
+                List.of(OrderLineRequest.of(11, "14.00", 10)))).orderId();
+        int cancelled = service.placeOrder(new PlaceOrderCommand("VINET",
+                List.of(OrderLineRequest.of(11, "99.00", 5)))).orderId();
+
+        service.confirm(shipped);
+        clock.advance(Duration.ofDays(3));
+        service.ship(shipped);
+        service.cancel(cancelled);
+
+        assertThat(module.salesReport().revenueByCustomer())
+                .containsExactly(new CustomerRevenue("VINET", new BigDecimal("140.00"), "TRY"));
+        assertThat(module.salesReport().countByStatus())
+                .containsEntry("SHIPPED", 1L)
+                .containsEntry("CANCELLED", 1L);
+    }
+}
+```
+
+> Birim testler hayati önem arz ederler. Bir testin değerini onu kırmayı denediğimizde daha çok anlarız. Özellikle yeni bir test yazdığımızda en az bir kere kırmızı bayrak kaldırdığını görmemiz gerekir. TDD - Test Driven Development konusuna bakalım ve Red-Green-Blue/Refactor döngüsünü inceleyelim.
+
+## Yeni Mimari Kararlar
+
+// EKLENECEK
