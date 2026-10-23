@@ -10,23 +10,19 @@ import com.lectures.business.design.app.anemic.AnemicOrder;
 import com.lectures.business.design.app.anemic.AnemicOrderLine;
 import com.lectures.business.design.app.anemic.OrderCalculator;
 import com.lectures.business.design.sales.api.CustomerRevenue;
+import com.lectures.business.design.sales.api.OrderLineRequest;
 import com.lectures.business.design.sales.api.OrderSummary;
-import com.lectures.business.design.sales.application.OrderMapper;
+import com.lectures.business.design.sales.api.PlaceOrderCommand;
+import com.lectures.business.design.sales.application.OrderService;
 import com.lectures.business.design.sales.application.SalesReport;
 import com.lectures.business.design.sales.domain.Customer;
 import com.lectures.business.design.sales.domain.CustomerId;
-import com.lectures.business.design.sales.domain.CustomerTier;
 import com.lectures.business.design.sales.domain.Order;
-import com.lectures.business.design.sales.domain.OrderFactory;
 import com.lectures.business.design.sales.domain.OrderId;
-import com.lectures.business.design.sales.domain.OrderSpecifications;
-import com.lectures.business.design.sales.domain.SequentialOrderIdGenerator;
-import com.lectures.business.design.sales.domain.VolumeDiscountPolicy;
-import com.lectures.business.design.sales.persistence.InMemoryOrderRepository;
-import com.lectures.business.design.sales.persistence.OrderRepository;
 import com.lectures.business.design.shared.kernel.Address;
+import com.lectures.business.design.shared.kernel.DomainException;
 import com.lectures.business.design.shared.kernel.Money;
-import com.lectures.business.design.shared.kernel.Specification;
+import java.util.List;
 
 public final class BusinessDesign {
 
@@ -46,6 +42,59 @@ public final class BusinessDesign {
         compareAnemicAndRich();
         System.out.println();
         runSalesScenario();
+    }
+
+    // CASE #2 sales module end to end
+    private static void runSalesScenario() {
+        System.out.println("=== Sales scenario ===");
+
+        SalesModule module = SalesModule.inMemory(CLOCK, 10248);
+        module.customers().save(new Customer(CustomerId.of("VINET"), "Vins et alcools Chevalier",
+                new Address("59 rue de l'Abbaye", "Reims", "51100", "France")));
+        module.customers().save(new Customer(CustomerId.of("TOMSP"), "Toms Spezialitaten",
+                new Address("Luisenstr. 48", "Munster", "44087", "Germany")));
+
+        OrderService orders = module.orderService();
+
+        int shipped = orders.placeOrder(new PlaceOrderCommand("VINET",
+                List.of(OrderLineRequest.of(11, "14.00", 10)))).orderId();
+        orders.confirm(shipped);
+        orders.ship(shipped);
+
+        int confirmed = orders.placeOrder(new PlaceOrderCommand("VINET",
+                List.of(OrderLineRequest.of(11, "10.00", 3)))).orderId();
+        orders.confirm(confirmed);
+
+        int cancelled = orders.placeOrder(new PlaceOrderCommand("TOMSP",
+                List.of(OrderLineRequest.of(11, "99.00", 100)))).orderId();
+        orders.cancel(cancelled);
+
+        OrderSummary draft = orders.placeOrder(new PlaceOrderCommand("TOMSP",
+                List.of(OrderLineRequest.of(11, "20.00", 51))));
+        System.out.println("Placed draft: " + draft);
+
+        try {
+            orders.ship(draft.orderId());
+        } catch (DomainException e) {
+            System.out.println("Rejected by the aggregate: " + e.getMessage());
+        }
+
+        SalesReport report = module.salesReport();
+
+        System.out.println();
+        System.out.println("Order counts by status;");
+        report.countByStatus().forEach((status, count)
+                -> System.out.println("  " + status + ": " + count));
+
+        System.out.println();
+        System.out.println("Revenue by customer;");
+        for (CustomerRevenue row : report.revenueByCustomer()) {
+            System.out.println("  " + row.customerId() + ": " + row.revenue() + " " + row.currency());
+        }
+
+        System.out.println();
+        System.out.println("Totals;");
+        System.out.println("  " + report.totals());
     }
 
     // CASE #1 anemic vs rich ---
@@ -86,77 +135,6 @@ public final class BusinessDesign {
             rich.addLine(99, Money.tl("10.00"), -5, NO_DISCOUNT);
         } catch (IllegalArgumentException e) {
             System.out.println("rich rejects : " + e.getMessage());
-        }
-    }
-
-    // CASE #2 sales module end to end
-    private static void runSalesScenario() {
-        System.out.println("=== Sales scenario ===");
-
-        Customer vinet = new Customer(CustomerId.of("VINET"), "Vins et alcools Chevalier",
-                new Address("59 rue de l'Abbaye", "Reims", "51100", "France"));
-        Customer tomsp = new Customer(CustomerId.of("TOMSP"), "Toms Spezialitaten",
-                new Address("Luisenstr. 48", "Munster", "44087", "Germany"));
-
-        OrderFactory factory = new OrderFactory(new SequentialOrderIdGenerator(10248), CLOCK);
-        OrderRepository repository = new InMemoryOrderRepository();
-
-        Order shipped = factory.draftFor(vinet);
-        shipped.addLine(11, Money.tl("14.00"), 10, NO_DISCOUNT);
-        shipped.confirm();
-        shipped.ship(LocalDate.now(CLOCK).plusDays(12));
-        repository.save(shipped);
-
-        Order confirmed = factory.draftFor(vinet);
-        confirmed.addLine(11, Money.tl("10.00"), 3, NO_DISCOUNT);
-        confirmed.confirm();
-        repository.save(confirmed);
-
-        Order cancelled = factory.draftFor(tomsp);
-        cancelled.addLine(11, Money.tl("99.00"), 100, NO_DISCOUNT);
-        cancelled.cancel();
-        repository.save(cancelled);
-
-        Order draft = factory.draftFor(tomsp);
-        draft.addLine(11, Money.tl("20.00"), 51, NO_DISCOUNT);
-        repository.save(draft);
-
-        Specification<Order> bigGermanOrder = OrderSpecifications.notCancelled()
-                .and(OrderSpecifications.shippedTo("Germany"))
-                .and(OrderSpecifications.worthAtLeast(Money.tl("1000")));
-
-        System.out.println("Not cancelled, shipped to Germany, worth at least 1000 TL;");
-        for (Order order : repository.findAll()) {
-            System.out.println("  " + order.orderId() + " " + order.status()
-                    + " -> " + bigGermanOrder.isSatisfiedBy(order));
-        }
-
-        System.out.println();
-        System.out.println("Discount policies for order " + draft.orderId() + " (" + draft.total() + ");");
-        System.out.println("  volume : " + draft.totalWith(new VolumeDiscountPolicy()));
-        System.out.println("  silver : " + draft.totalWith(CustomerTier.SILVER));
-
-        SalesReport report = new SalesReport(repository, new OrderMapper());
-
-        System.out.println();
-        System.out.println("Order counts by status;");
-        report.countByStatus().forEach((status, count)
-                -> System.out.println("  " + status + ": " + count));
-
-        System.out.println();
-        System.out.println("Revenue by customer;");
-        for (CustomerRevenue row : report.revenueByCustomer()) {
-            System.out.println("  " + row.customerId() + ": " + row.revenue() + " " + row.currency());
-        }
-
-        System.out.println();
-        System.out.println("Totals;");
-        System.out.println("  " + report.totals());
-
-        System.out.println();
-        System.out.println("Orders of VINET (OrderSummary);");
-        for (OrderSummary summary : report.ordersOf("VINET")) {
-            System.out.println("  " + summary);
         }
     }
 }
