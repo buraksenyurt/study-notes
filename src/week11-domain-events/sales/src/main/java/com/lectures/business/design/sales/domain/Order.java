@@ -21,6 +21,7 @@ public final class Order {
     private OrderStatus status = OrderStatus.DRAFT;
     private Address shippingAddress;
     private LocalDate shippedDate;
+    private final List<OrderEvent> pendingEvents = new ArrayList();
 
     public Order(OrderId orderId, CustomerId customerId, LocalDate orderDate) {
         this.orderId = Objects.requireNonNull(orderId, "orderId must not be null");
@@ -61,7 +62,7 @@ public final class Order {
                     orderId, IncompleteOrderException.MissingPart.SHIPPING_ADDRESS);
         }
         transitionTo(OrderStatus.CONFIRMED);
-
+        pendingEvents.add(new OrderConfirmed(orderId, customerId, total()));
     }
 
     public void shipTo(Address address) {
@@ -77,10 +78,13 @@ public final class Order {
         }
         shippedDate = date;
         status = OrderStatus.SHIPPED;
+        pendingEvents.add(new OrderShipped(orderId, customerId, date, shippingAddress));
     }
 
     public void cancel() {
+        OrderStatus previous = status;
         transitionTo(OrderStatus.CANCELLED);
+        pendingEvents.add(new OrderCancelled(orderId, customerId, previous));
     }
 
     public Money totalWith(DiscountPolicy policy) {
@@ -124,8 +128,14 @@ public final class Order {
     public List<OrderLine> lines() {
         return List.copyOf(lines);
     }
-    // --- state end ---
 
+    public List<OrderEvent> pullEvents() {
+        List<OrderEvent> pulled = List.copyOf(pendingEvents);
+        pendingEvents.clear();
+        return pulled;
+    }
+
+    // --- state end ---
     // --- helpers begin ---
     private int indexOfProduct(int productId) {
         for (int i = 0; i < lines.size(); i++) {

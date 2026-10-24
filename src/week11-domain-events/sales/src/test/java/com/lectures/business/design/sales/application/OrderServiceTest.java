@@ -42,7 +42,8 @@ class OrderServiceTest {
 
         service = new OrderService(orders, customers,
                 new OrderFactory(new SequentialOrderIdGenerator(10248), clock),
-                new OrderMapper(), clock);
+                new OrderMapper(), clock, event -> {
+                });
     }
 
     private OrderSummary placeVinetOrder() {
@@ -109,7 +110,8 @@ class OrderServiceTest {
     @DisplayName("the service refuses to be built without its collaborators")
     void collaboratorsAreRequired() {
         assertThatThrownBy(() -> new OrderService(null, new InMemoryCustomerRepository(),
-                new OrderFactory(new SequentialOrderIdGenerator(1), clock), new OrderMapper(), clock))
+                new OrderFactory(new SequentialOrderIdGenerator(1), clock), new OrderMapper(), clock, event -> {
+                }))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("orders");
     }

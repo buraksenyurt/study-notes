@@ -39,8 +39,8 @@ public final class BusinessDesign {
     }
 
     public static void main(String[] args) {
-        compareAnemicAndRich();
-        System.out.println();
+        // compareAnemicAndRich();
+        // System.out.println();
         runSalesScenario();
     }
 
@@ -48,7 +48,7 @@ public final class BusinessDesign {
     private static void runSalesScenario() {
         System.out.println("=== Sales scenario ===");
 
-        SalesModule module = SalesModule.inMemory(CLOCK, 10248);
+        SalesModule module = SalesModule.inMemory(CLOCK, 10248, new ConsoleCustomerNotifier());
         module.customers().save(new Customer(CustomerId.of("VINET"), "Vins et alcools Chevalier",
                 new Address("59 rue de l'Abbaye", "Reims", "51100", "France")));
         module.customers().save(new Customer(CustomerId.of("TOMSP"), "Toms Spezialitaten",
@@ -95,6 +95,10 @@ public final class BusinessDesign {
         System.out.println();
         System.out.println("Totals;");
         System.out.println("  " + report.totals());
+
+        System.out.println();
+        System.out.println("Activity log (an observer of every OrderEvent);");
+        module.activityLog().entries().forEach(entry -> System.out.println("  " + entry));
     }
 
     // CASE #1 anemic vs rich ---

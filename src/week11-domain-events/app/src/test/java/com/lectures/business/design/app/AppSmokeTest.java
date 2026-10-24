@@ -10,6 +10,7 @@ import com.lectures.business.design.sales.domain.CustomerId;
 import com.lectures.business.design.shared.kernel.Address;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,8 @@ class AppSmokeTest {
     @DisplayName("the composition root wires one graph: what the service writes, the report reads")
     void theWiredGraphWorksEndToEnd() {
         SteppingClock clock = new SteppingClock("1996-07-04T09:00:00Z");
-        SalesModule module = SalesModule.inMemory(clock, 10248);
+        List<String> sent = new ArrayList<>();
+        SalesModule module = SalesModule.inMemory(clock, 10248, (customerId, message) -> sent.add(customerId + ": " + message));
         module.customers().save(new Customer(CustomerId.of("VINET"), "Vins et alcools Chevalier",
                 new Address("59 rue de l'Abbaye", "Reims", "51100", "France")));
 

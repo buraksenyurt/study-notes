@@ -26,14 +26,16 @@ public final class OrderService {
     private final OrderFactory factory;
     private final OrderMapper mapper;
     private final Clock clock;
+    private final DomainEventPublisher events;
 
     public OrderService(OrderRepository orders, CustomerRepository customers,
-            OrderFactory factory, OrderMapper mapper, Clock clock) {
+            OrderFactory factory, OrderMapper mapper, Clock clock, DomainEventPublisher events) {
         this.orders = Objects.requireNonNull(orders, "orders must not be null");
         this.customers = Objects.requireNonNull(customers, "customers must not be null");
         this.factory = Objects.requireNonNull(factory, "factory must not be null");
         this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
+        this.events = Objects.requireNonNull(events, "events must not be null");
     }
 
     public OrderSummary placeOrder(PlaceOrderCommand command) {
@@ -54,7 +56,6 @@ public final class OrderService {
     }
 
     public OrderSummary ship(int orderId) {
-        // "Today" comes from the injected clock, never from LocalDate.now()
         return change(orderId, order -> order.ship(LocalDate.now(clock)));
     }
 
@@ -70,6 +71,7 @@ public final class OrderService {
         Order order = orders.getById(OrderId.of(orderId));
         action.accept(order);
         orders.save(order);
+        events.publishAll(order.pullEvents());
         return mapper.toSummary(order);
     }
 }
