@@ -607,4 +607,127 @@ class AppSmokeTest {
 
 ## Yeni Mimari Kararlar
 
-// EKLENECEK
+Bu bölümde ele aldığımız konular aslında bir ADR dökümanı içerisinde karar bağlanıp kayıt altına da alınabilir. Kararlar **composition root** ve **dependency injection** stratejileri ile ilgili olur. [ADR-0006-Composition Root ve Constructor Injection](docs/adr/ADR-0006.md) içeriğini bu anlamda ele alabiliriz ve buna bağlı olarak ArchUnit test sınıfına aşağıdaki üç test metodunu ekleyerek denemeler yapabiliriz.
+
+```java
+//  ADR-0006 Composition root and constructor injection
+@ArchTest
+static final ArchRule application_depends_on_contracts_not_implementations = noClasses()
+        .that().resideInAPackage("..sales.application..")
+        .should().dependOnClassesThat().haveSimpleNameStartingWith("InMemory");
+
+@ArchTest
+static final ArchRule application_collaborators_are_private_final = fields()
+        .that().areDeclaredInClassesThat().resideInAPackage("..sales.application..")
+        .and().areNotStatic()
+        .should().bePrivate().andShould().beFinal();
+
+@ArchTest
+static final ArchRule no_hidden_clock = noClasses()
+        .should().callMethod(LocalDate.class, "now")
+        .orShould().callMethod(LocalDateTime.class, "now")
+        .orShould().callMethod(Instant.class, "now")
+        .orShould().callMethod(System.class, "currentTimeMillis");
+```
+
+![Week 10 ArchUnit Test Result](./images/week_10_02.png)
+
+Bu test metotları ile ilgili olarak şunları söyleyebiliriz;
+
+| **Kural *(ArchRule alanı)*** | **ADR** | **Neyi Doğrular?** |
+| --- | :---: | --- |
+| **application_depends_on_contracts_not_implementations** | 0006 | `sales.application` paketinin adı `InMemory` ile başlayan hiçbir sınıfa bağımlı olmadığını doğrular. Ancak isme baktığı için `JdbcOrderRepository` gibi bir sınıfı yakalayamaz. *(Bunu nasıl ele alabileceğimizi araştıralım)* |
+| **application_collaborators_are_private_final** | 0006 | `sales.application` sınıflarındaki statik olmayan tüm alanların `private final` olduğunu doğrular. Setter ve field injection tekniklerini dolaylı olarak engeller. |
+| **no_hidden_clock** | 0006 | Analiz kapsamındaki hiçbir sınıfın parametresiz `now()` metotlarını veya `System.currentTimeMillis()` metodunu çağırmadığını doğrular. `LocalDate.now(clock)` farklı bir overload olduğu için kurala takılmaz. |
+
+Kuralların gerçekten çalıştığını görmek için **OrderService** sınıfında iki küçük değişiklik yapalım. **ship** metodundaki `LocalDate.now(clock)` çağrısını `LocalDate.now()` olarak değiştirelim ve `mapper` alanının `final` belirtecini kaldıralım. Uygulama testlerini çalıştırdığımızda önce `OrderServiceTest.shipUsesTheClock` testinin kırıldığını görürüz.
+
+![Week 10 ArchUnit Test Result After Changes](./images/week_10_03.png)
+
+Diğer yandan mimari testler bu değişikliklerle ilgili olarak iki ihlali raporlar. Bunu görmek için sadece mimari testleri aşağıdaki komut ile çalıştırabiliriz.
+
+```bash
+cd .\week10-application-services-and-di\
+ mvn -pl quality/architecture-tests -am test "-Dtest=ArchitectureTest" "-Dsurefire.failIfNoSpecifiedTests=false"
+```
+
+![Week 10 ArchUnit Test Result After Changes](./images/week_10_04.png)
+
+## Açık Noktalar ve Tuzaklar
+
+SalesReportTest sınıfında şöyle bir test metodumuz var.
+
+```java
+@Test
+@DisplayName("no public method of the report mentions a domain type")
+void noDomainTypeLeaksFromTheReport() {
+    for (Method method : SalesReport.class.getDeclaredMethods()) {
+        if (!Modifier.isPublic(method.getModifiers())) {
+            continue;
+        }
+        assertThat(method.toGenericString())
+                .as(method.getName())
+                .doesNotContain("com.lectures.business.design.domain");
+    }
+}
+```
+
+Paketleri **sales** modülüne taşıdıktan sonra domain paketinin tam adı `com.lectures.business.design.sales.domain` şeklinde değişti fakat testteki ifadeyi güncellemedik. Sonuç olarak bu test o andan itibaren hiçbir koşulda kırılamaz hale geldi. **SalesReport** sınıfına `public Order anyOrder()` gibi bir metot eklesek bile test geçmeye devam edecektir. Bu nedenle ilgili testi güncellemek gerekiyor.
+
+```java
+@Test
+@DisplayName("no public method of the report mentions a domain type")
+void noDomainTypeLeaksFromTheReport() {
+    for (Method method : SalesReport.class.getDeclaredMethods()) {
+        if (!Modifier.isPublic(method.getModifiers())) {
+            continue;
+        }
+        assertThat(method.toGenericString())
+                .as(method.getName())
+                .doesNotContain("com.lectures.business.design.sales.domain");
+    }
+}
+```
+
+Farkı hemen söyleyelim; `com.lectures.business.design.domain` ifadesi `com.lectures.business.design.sales.domain` olarak değiştirildi. Bu önemsiz gibi görünen fark iki önemli sonucu beraberinde getiriyor:
+
+- Bir testin değerini, onu kırmayı denediğimizde anlarız. Yeni bir test yazdığımızda en az bir kez kırıldığını görmek önemlidir. TDD *(Test Driven Development)* yaklaşımındaki *kırmızı(red)* adımının bir amacı da budur. *(TDD- Red Green Blue konusunu araştıralım)*
+- Paket adlarını metin olarak karşılaştıran testler refactoring sırasında sessizce anlamını yitirirler. Aynı kontrolü **ArchUnit** ile tip güvenli hale getirmek çok daha sağlam bir çözümdür. *(Bu testi bir `@ArchTest` kuralına dönüştürmeyi deneyelim)*
+
+Bir tuzakla devam edelim. **OrderService** sınıfındaki change metodunda yer alan `orders.save(order)` çağrısını silip testleri yeniden çalıştıralım. Sizce ne olur?
+
+![OrderService Change Method Test Result After Removing Save Call](./images/week_10_05.png)
+
+Dikkat edileceği üzere hiçbir test hata almadı. Nitekim, **InMemoryOrderRepository** siparişleri bir Map koleksiyonunda **referans** olarak saklar. **getById** ile aldığımız nesne map koleksiyonundaki nesnenin kendisi. Üzerinde `confirm()` metodunu çağırdığımız anda repository içindeki nesne de değişmiş oluyor. Burada **save** çağrısının yapılıp yapılmamasının hiçbir etkisi yok. Ama bir veritabanı kullandığımız senaryoda durum tamamen farklı. **save** çağrısı yapılmazsa değişiklik kaybolur. Yani in-memory repository gerçek bir repository'nin önemli bir davranışını taklit etmiyor. Testler yeşil ama kod üretimde çıktığında hata var. Bu açığı JDBC tabanlı repository nesnemizi yazarken *sözleşme testleri* *(contract tests)* ile kapatmanın yolunu öğreneceğiz.
+
+---
+
+## Bölüm Soruları
+
+- OrderService sınıfında hiçbir **if** bloğu bulunmuyor. Servise *"müşterinin açık sipariş sayısı beşi geçiyorsa yeni sipariş kabul etme"* gibi bir kural eklememiz istenseydi bu kural nerede oluşturulmalıydı? Kural birden fazla aggregate nesnesini *(Customer ve Order)* ilgilendiriyorsa ne değişir? *(Domain Service kavramını araştıralım)*
+- **OrderService** yerine **PlaceOrderHandler**, **ConfirmOrderHandler** gibi senaryo başına bir sınıf kullansaydık her sınıfın bağımlılık listesi nasıl değişirdi? Hangi durumda bu yaklaşım tercih edilmelidir? *(MediatR ve Command Pattern arasındaki ilişkiyi araştıralım)*
+- Para birimi **OrderService** içinde **TRY** olarak sabitlenmiş durumda. Bu bilginin doğru yeri neresidir: command nesnesi, müşteri, ürün fiyat listesi veya yapılandırma...
+- `application_depends_on_contracts_not_implementations` kuralı sadece **InMemory** ön ekine bakarak çalışıyor. Kuralı isimden bağımsız hale getirmek için ArchUnit'te ne kullanabiliriz?
+- `SalesReportTest.noDomainTypeLeaksFromTheReport` testini aynı garantiyi veren bir ArchUnit kuralına dönüştürmeye çalışalım. `methods().that().arePublic()...` ile başlayan bir ifadeyi nasıl tanımlarız?
+- Service Locator *(`ServiceRegistry.get(OrderRepository.class)`)* neden bir anti-pattern olarak kabul edilir ya da kabul edilmeli midir?
+- CDI *(Contexts and Dependency Injection)* katmanında `@ApplicationScoped`, `@RequestScoped` ve `@Dependent` anotasyonları arasındaki farkı araştıralım. **SalesModule** içinde oluşturduğumuz nesnelerin her biri hangi kapsama karşılık gelir? **OrderService** neden `@RequestScoped` ile donatılmak zorunda değildir?
+- **SteppingClock** yerine Mockito eklentisi ile **Clock** nesnesini taklit etmek *(mock)* mümkün müdür? Kendi yazdığımız küçük bir test dublörü *(fake)* ile mock kütüphanesi arasındaki farkı **fake**, **stub** ve **mock** terimleri üzerinden tartışalım.
+- **InMemoryOrderRepository** nesneleri referans olarak sakladığı için unutulan bir **save** çağrısı testlerde fark edilemiyor. Bu açığı repository'yi değiştirerek nasıl kapatabiliriz? Bunun **Order** sınıfı üzerinde ne gibi bir etkisi olur?
+- Constructor parametre sayısının beşi aşması neden bir **kod kokusu *(code smell)*** olarak kabul edilir? `OrderService`'in bir gün on farklı bağımlılığa ihtiyaç duyduğunu düşünelim. Sınıfı neye göre nasıl bölerdiniz?
+
+## Bu bölümün kodu
+
+- [week10-application-services-and-di](src/week10-application-services-and-di)
+
+```powershell
+cd src\week10-application-services-and-di
+
+# Bu bölümdeki tüm modüllerin testleri
+mvn test
+
+# Yalnızca servis testleri
+mvn -pl sales -am test -Dtest=OrderServiceTest -Dsurefire.failIfNoSpecifiedTests=false
+
+# Yalnızca mimari testler ve ihtiyaç duyduğu modüller
+mvn -pl quality/architecture-tests -am test
+```

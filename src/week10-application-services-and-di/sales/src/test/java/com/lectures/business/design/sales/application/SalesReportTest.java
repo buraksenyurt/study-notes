@@ -2,8 +2,6 @@ package com.lectures.business.design.sales.application;
 
 import com.lectures.business.design.sales.api.CustomerRevenue;
 import com.lectures.business.design.sales.api.OrderSummary;
-import com.lectures.business.design.sales.application.OrderMapper;
-import com.lectures.business.design.sales.application.SalesReport;
 import com.lectures.business.design.sales.domain.OrderBuilder;
 import com.lectures.business.design.sales.persistence.InMemoryOrderRepository;
 import com.lectures.business.design.sales.persistence.OrderRepository;
@@ -107,7 +105,7 @@ class SalesReportTest {
             }
             assertThat(method.toGenericString())
                     .as(method.getName())
-                    .doesNotContain("com.lectures.business.design.domain");
+                    .doesNotContain("com.lectures.business.design.sales.domain");
         }
     }
 
