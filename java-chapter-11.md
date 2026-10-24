@@ -547,4 +547,96 @@ En sık kullanılan çözüm **Transactional Outbox** desenidir. Ancak bu desen 
 
 ## Aynı Yapı CDI ile Nasıl Görünürdü?
 
-// DEVAM EDECEK
+**Jakarta CDI**, Observer desenini platformun bir parçası olarak sunar. Aşağıdaki kodu karşılaştırma amacıyla değerlendirebiliriz.
+
+```java
+@ApplicationScoped
+public class OrderService {
+
+    @Inject
+    Event<OrderEvent> events;          // DomainEventPublisher'ın karşılığı
+
+    private OrderSummary change(int orderId, Consumer<Order> action) {
+        ...
+        orders.save(order);
+        order.pullEvents().forEach(events::fire);
+        ...
+    }
+}
+
+@ApplicationScoped
+public class ShipmentNotificationHandler {
+
+    // subscribe(OrderShipped.class, ...) satırının karşılığı
+    void on(@Observes(during = TransactionPhase.AFTER_SUCCESS) OrderShipped event) {
+        ...
+    }
+}
+```
+
+| **Bu bölümdeki yapı** | **CDI karşılığı** |
+| --- | --- | --- |
+| `DomainEventPublisher.publish` | `Event<T>.fire()` |
+| `subscribe(OrderShipped.class, handler)` | `@Observes OrderShipped` parametresi |
+| Senkron, aynı thread | `@Observes` |
+| *(yok)* | `fireAsync()` ve `@ObservesAsync` |
+| *(yok)* | `@Observes(during = AFTER_SUCCESS)` |
+
+CDI'da aboneliği composition root'un yapmasına gerek yoktur. **Container**, uygulama ayağa kalkarken `@Observes` parametrelerini tarar ve abonelikleri kendisi oluşturur. Tabii bunun dezavantajı da vardır; hangi olayı kimin dinlediğini görmek için artık tek bir sınıfa bakmak yeterli değildir.
+
+## Mimari Kurallara Üç Ekleme
+
+Domain Event kullanımlarını ele aldığımız bu bölümden [ADR-0007-Domain Event'ler ve Senkron Yayınlama](docs/adr/ADR-0007.md) şeklinde bir karar kaydı da oluşturabiliriz. Bu yeni kuralları da ArchitectureTest sınıfına aşağıdaki gibi ekleyebiliriz.
+
+```java
+//  ADR-0007 Domain events
+@ArchTest
+static final ArchRule domain_events_are_records = classes()
+        .that().implement(DomainEvent.class)
+        .and().areNotInterfaces()
+        .should().beAssignableTo(Record.class);
+
+@ArchTest
+static final ArchRule domain_events_live_in_the_domain = classes()
+        .that().implement(DomainEvent.class)
+        .should().resideInAnyPackage("..sales.domain..", "..shared.kernel..");
+
+@ArchTest
+static final ArchRule only_application_pulls_events = noClasses()
+        .that().resideOutsideOfPackage("..sales.application..")
+        .should().callMethod(Order.class, "pullEvents");
+```
+
+| **Kural *(ArchRule alanı)*** | **ADR** | **Neyi Doğrular?** |
+| --- | :---: | --- |
+| **domain_events_are_records** | 0007 | `DomainEvent` arayüzünü uygulayan ve arayüz olmayan her sınıfın bir record olduğunu doğrular. ArchUnit 1.5'te `beRecords()` gibi hazır bir ifade bulunmadığı için tüm record'ların ortak atası olan `java.lang.Record` tipine atanabilirliği kontrol ediyoruz. |
+| **domain_events_live_in_the_domain** | 0007 | Olayların yalnızca domain veya shared-kernel paketlerinde tanımlandığını doğrular. application veya persistence paketinde bir olay tanımlamak, olayın iş dilinden kopması demektir. |
+| **only_application_pulls_events** | 0007 | `Order.pullEvents()` metodunun yalnızca application paketinden çağrıldığını doğrular. Örneğin persistence paketindeki bir repository olayları çekerse, olaylar kimse tarafından yayınlanmadan kaybolur. |
+
+---
+
+## Bölüm Soruları
+
+// EKLENECEK
+
+## Bu bölümün kodu
+
+- [week11-domain-events](src/week11-domain-events)
+
+```powershell
+cd src\week11-domain-events
+
+# Bölüm 11'deki tüm modüllerin testleri
+mvn test
+
+# Yalnızca mimari testler ve ihtiyaç duyduğu modüller
+mvn -pl quality/architecture-tests -am test
+```
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+| [Bölüm 10: Uygulama Servisleri ve Manuel Dependency Injection](java-chapter-10.md#top) | [Ders Notları](README.md#top) | |
+<!-- nav:bottom:end -->

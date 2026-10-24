@@ -743,5 +743,5 @@ mvn -pl quality/architecture-tests -am test
 
 | ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
 | :--- | :---: | ---: |
-| [Bölüm 09: Maven Modülleri ve ArchUnit Kullanımı](java-chapter-09.md#top) | [Ders Notları](README.md#top) |  |
+| [Bölüm 09: Maven Modülleri ve ArchUnit Kullanımı](java-chapter-09.md#top) | [Ders Notları](README.md#top) | [Bölüm 11: Domain Event'ler ve Observer Deseni](java-chapter-11.md#top) |
 <!-- nav:bottom:end -->
