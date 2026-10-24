@@ -11,6 +11,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static com.tngtech.archunit.library.GeneralCodingRules.NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @AnalyzeClasses(
         packages = {"com.lectures.business.design.sales", "com.lectures.business.design.shared"},
@@ -71,4 +74,23 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule no_dumping_ground_packages = noClasses()
             .should().resideInAnyPackage("..util..", "..common..", "..helper..", "..misc..");
+
+    //  ADR-0006 Composition root and constructor injection
+    @ArchTest
+    static final ArchRule application_depends_on_contracts_not_implementations = noClasses()
+            .that().resideInAPackage("..sales.application..")
+            .should().dependOnClassesThat().haveSimpleNameStartingWith("InMemory");
+
+    @ArchTest
+    static final ArchRule application_collaborators_are_private_final = fields()
+            .that().areDeclaredInClassesThat().resideInAPackage("..sales.application..")
+            .and().areNotStatic()
+            .should().bePrivate().andShould().beFinal();
+
+    @ArchTest
+    static final ArchRule no_hidden_clock = noClasses()
+            .should().callMethod(LocalDate.class, "now")
+            .orShould().callMethod(LocalDateTime.class, "now")
+            .orShould().callMethod(Instant.class, "now")
+            .orShould().callMethod(System.class, "currentTimeMillis");
 }
