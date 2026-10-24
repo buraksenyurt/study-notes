@@ -1,4 +1,10 @@
-# Bölüm 9 - Maven Modülleri ve ArchUnit Kullanımı
+<a id="top"></a>
+
+# Bölüm 09: Maven Modülleri ve ArchUnit Kullanımı
+
+<!-- nav:top:start -->
+[← Bölüm 08](java-chapter-08.md#top) · [İçindekiler](README.md#top) · [Bölüm 10 →](java-chapter-10.md#top)
+<!-- nav:top:end -->
 
 Bu bölüme kadarki kod örneklerimizi tek bir Maven modülü altında gerçekleştirdik. Proje türünden olan root pom altında bölümlerin her birini ayrı jar paketleri halinde tasarladık. Bu daha çok ders konularını ayrı paketler halinde organize etmek istediğimiz için uyguladığımız bir pratikti. Pek tabii bir önceki bölümde iş nesnelerini, servisleri ve diğer bazı kavramları kendi paketlerine almaya başladık. Gerçek hayat çözümlerinde paket ve modüller arasındaki ilişkileri doğru tesis etmek oldukça önemlidir. Paketlerin aynı modül içerisinde yer almasının avantajları olduğu kadar dezavantajları da olabilir. Bu biraz da seçilen mimari yaklaşıma ve alınan kararlara *(çoğunlukla ADR-Architecture Decision Record maddelerinde açıkça belirtilir)* bağlıdır. Bu bölümde özellikle modül sınırlarını anlamlandırmaya da çalışacağız. Şu soruların cevaplarını bulmaya çalışacağız:
 
@@ -301,3 +307,11 @@ mvn -pl app -am test
 # Yalnızca mimari testler ve ihtiyaç duyduğu modüller
 mvn -pl quality/architecture-tests -am test
 ```
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+| [Bölüm 08: Strategy, Specification, Repository ve Mapper kavramları](java-chapter-08.md#top) | [Ders Notları](README.md#top) | [Bölüm 10: Uygulama Servisleri ve Manuel Dependency Injection](java-chapter-10.md#top) |
+<!-- nav:bottom:end -->

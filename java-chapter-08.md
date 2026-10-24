@@ -1,4 +1,10 @@
-# Bölüm 8 - Strategy, Specification, Repository ve Mapper kavramları
+<a id="top"></a>
+
+# Bölüm 08: Strategy, Specification, Repository ve Mapper kavramları
+
+<!-- nav:top:start -->
+[← Bölüm 07](java-chapter-07.md#top) · [İçindekiler](README.md#top) · [Bölüm 09 →](java-chapter-09.md#top)
+<!-- nav:top:end -->
 
 Bu bölümde domain modelimiz farklı desenler ve yaklaşımlarla geliştirmeye devam ediyoruz. Birçok sorunun ortak çözümü olan tasarım desenleri burada da devreye girecek.
 
@@ -618,3 +624,11 @@ mvn -pl week08-step2-specification -am test
 mvn -pl week08-step3-repository -am test
 mvn -pl week08-step4-mappers -am test
 ```
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+| [Bölüm 07: Typed Identity, Static Factory, Factory ve Builder ile Nesne Üretimi](java-chapter-07.md#top) | [Ders Notları](README.md#top) | [Bölüm 09: Maven Modülleri ve ArchUnit Kullanımı](java-chapter-09.md#top) |
+<!-- nav:bottom:end -->

@@ -1,4 +1,10 @@
+<a id="top"></a>
+
 # Bölüm 07: Typed Identity, Static Factory, Factory ve Builder ile Nesne Üretimi
+
+<!-- nav:top:start -->
+[← Bölüm 06](java-chapter-06.md#top) · [İçindekiler](README.md#top) · [Bölüm 08 →](java-chapter-08.md#top)
+<!-- nav:top:end -->
 
 Şu ana kadar tasarladığımız nesneleri oluşturmak için çoğunlukla yapıcılardan *(constructors)* yararlandık. Örneğin yeni bir sipariş oluşturmak ya da adres bilgisi girmek için aşağıdaki kod parçasındakilere benzer şekilde ilerledik.
 
@@ -908,3 +914,11 @@ mvn -pl week07-object-creation -am test
 mvn -pl week07-step2-factory -am test
 mvn -pl week07-step3-builder -am test
 ```
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+| [Bölüm 06: Yazılım Mimarileri Üzerine Yardımcı Notlar](java-chapter-06.md#top) | [Ders Notları](README.md#top) | [Bölüm 08: Strategy, Specification, Repository ve Mapper kavramları](java-chapter-08.md#top) |
+<!-- nav:bottom:end -->

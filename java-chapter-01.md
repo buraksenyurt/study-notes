@@ -1,4 +1,10 @@
+<a id="top"></a>
+
 # Bölüm 01: Gitflow ve İlk İş Nesnesi
+
+<!-- nav:top:start -->
+[İçindekiler](README.md#top) · [Bölüm 02 →](java-chapter-02.md#top)
+<!-- nav:top:end -->
 
 ## Gitflow Branch Stratejisi
 
@@ -320,3 +326,11 @@ Bu bölümdeki iki aşama iki ayrı modülde donmuş durumda:
 cd src
 mvn -pl week01-step1-pojo-customer -am test
 ```
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+|  | [Ders Notları](README.md#top) | [Bölüm 02: Git Pratikleri, Anemik Model ve Record'lar](java-chapter-02.md#top) |
+<!-- nav:bottom:end -->

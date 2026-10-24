@@ -1,4 +1,10 @@
+<a id="top"></a>
+
 # Bölüm 05: Optional, Stream API ve Sorgu Tasarımı
+
+<!-- nav:top:start -->
+[← Bölüm 04](java-chapter-04.md#top) · [İçindekiler](README.md#top) · [Bölüm 06 →](java-chapter-06.md#top)
+<!-- nav:top:end -->
 
 Önceki derslerimizde bir müşterinin siparişlerini Customer sınıfında `List<Order>` olarak tutmayacağımızdan bahsetmiştik. Zira bunun bir alan *(field)* değil, bir sorgu *(query)* operasyonu olduğunu savunmuştuk. Bu derste sorguyu yazmaya çalışacağız ve bunu yaparken Optional ile Stream API enstrümanlarını nasıl kullanabileceğimizi öğreneceğiz.
 
@@ -589,3 +595,11 @@ Bu dersle ilgili olarak bizi araştırmaya konuları aşağıda bulabilirsiniz.
 cd src
 mvn -pl week05-optional-and-stream -am test
 ```
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+| [Bölüm 04: Aggregate Sınırları, State Machine ve Domain Exception'lar](java-chapter-04.md#top) | [Ders Notları](README.md#top) | [Bölüm 06: Yazılım Mimarileri Üzerine Yardımcı Notlar](java-chapter-06.md#top) |
+<!-- nav:bottom:end -->

@@ -11,7 +11,7 @@
     <packaging>pom</packaging>
     <name>Study Notes - Chapter Snapshots</name>
     <description>
-        Each module contains the frozen state of the code at the end of the corresponding java-weekN.md file.
+        Each module contains the frozen state of the code at the end of the corresponding java-chapter-NN.md file.
         Running "mvn test" will execute the tests for all chapters together.
     </description>
 

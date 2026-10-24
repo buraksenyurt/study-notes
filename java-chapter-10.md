@@ -1,4 +1,10 @@
-# Bölüm 10 - Uygulama Servisleri ve Manuel Dependency Injection
+<a id="top"></a>
+
+# Bölüm 10: Uygulama Servisleri ve Manuel Dependency Injection
+
+<!-- nav:top:start -->
+[← Bölüm 09](java-chapter-09.md#top) · [İçindekiler](README.md#top)
+<!-- nav:top:end -->
 
 Bir önceki bölümde kodumuzu Maven modüllerine ayırıp paketler arasındaki bağımlılık yönlerini ArchUnit testleriyle koruma altına aldık. Lakin sales modülünün dış dünyaya sunduğu yetenekler hala sınırlı. SalesReport aslında sadece okuma yapıyor. Sipariş oluşturmak, onaylamak veya kargoya vermek isteyen bir istemcinin Order nesnesini oluşturup ilgili metotları çağırması ve sonucu repository'ye kaydetmesi gerekiyor. BusinessDesign sınıfındaki main metodunda yaptığımız şey tam olarak buydu. Genellikle kurumsal çözümlerde bu süreçler bir HTTP isteği *(REST API çağrısı, WEB formu vb.)*, bir mesaj kuyruğu tüketicisi *(RabbitMQ Consumer)* veya zamanlanmış bir görev *(Task Scheduler)* tarafından tetiklenir. Bu tetikleyicilerin her biri domain nesnelerini doğrudan kullanmaya başlarsa bir önceki bölümde çizdiğimiz sınırların da bir anlamı kalmaz. Dolayısıyla bu bölümde aşağıdaki sorulara cevap aramaya çalışacağız.
 
@@ -731,3 +737,11 @@ mvn -pl sales -am test -Dtest=OrderServiceTest -Dsurefire.failIfNoSpecifiedTests
 # Yalnızca mimari testler ve ihtiyaç duyduğu modüller
 mvn -pl quality/architecture-tests -am test
 ```
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+| [Bölüm 09: Maven Modülleri ve ArchUnit Kullanımı](java-chapter-09.md#top) | [Ders Notları](README.md#top) |  |
+<!-- nav:bottom:end -->

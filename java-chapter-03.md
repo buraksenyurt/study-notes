@@ -1,4 +1,10 @@
+<a id="top"></a>
+
 # Bölüm 03: Money Value Object ve Rich Entity Tasarımı
+
+<!-- nav:top:start -->
+[← Bölüm 02](java-chapter-02.md#top) · [İçindekiler](README.md#top) · [Bölüm 04 →](java-chapter-04.md#top)
+<!-- nav:top:end -->
 
 Birçok domain hassas sayısal değerlere ihtiya duyar. Örneğin finansal uygulamalarda para birimi değerleri veya bilimsel hesaplamalarda ölçüm sonuçları hassasiyet gerektirir. Programlama dillerinde bu tür hassasiyet isteyen değişkenler double, float, BigDecimal gibi veri tipleri ile ifade edilirler. Ancak parasal değerler için double veya float kullanmak yuvarlama hatalarına yol açabilir. Bu nedenle finansal uygulamalarda genellikle BigDecimal tercih edilir. Bir para birimini sadece BigDecimal ile ifade etmek de çoğu zaman yeterli değildir. Zira bu para biriminin hangi ülkeye ait olduğu veya hangi döviz cinsinden olduğu bilgisi de önemlidir. Farklı para birimlerinden değerleri birbirileriyle toplamak hatadır ve bu bir domain kuralı olarak ele alınmalıdır.
 
@@ -586,3 +592,11 @@ Bu dersle ilgili olarak bizi araştırmaya itecek soruları aşağıdaki bulabil
 cd src
 mvn -pl week03-money-and-rich-entity -am test
 ```
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+| [Bölüm 02: Git Pratikleri, Anemik Model ve Record'lar](java-chapter-02.md#top) | [Ders Notları](README.md#top) | [Bölüm 04: Aggregate Sınırları, State Machine ve Domain Exception'lar](java-chapter-04.md#top) |
+<!-- nav:bottom:end -->

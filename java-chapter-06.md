@@ -1,4 +1,10 @@
+<a id="top"></a>
+
 # Bölüm 06: Yazılım Mimarileri Üzerine Yardımcı Notlar
+
+<!-- nav:top:start -->
+[← Bölüm 05](java-chapter-05.md#top) · [İçindekiler](README.md#top) · [Bölüm 07 →](java-chapter-07.md#top)
+<!-- nav:top:end -->
 
 Kurumsal çaptakı sistemler karmaşık iş süreçleri barındırır ve tasarımları da bu karmaşıklığı yönetebilecek şekilde olmalıdır. Bu nedenle yazılım mimarileri, sistemin ölçeklenebilirliğini *(scalability)*, bakımını *(maintainability)*, performansını *(performance)*, yönetilebilirliği *(manageability)* ve daha birçok faktörü doğrudan etkiler. Kısaca yazılım mimarisi, **sonradan değiştirilmesi pahalı ve zor olan kararlar bütünü** olarak tanımlanabilir. Esasında doğru yazılım mimarisi yok demek yanlış olmaz. Bunun yerine içeriğe *(context)* uygun trade-off' lar vardır *(trade-off: bir avantajı elde etmek için başka bir avantajdan vazgeçmek)*.
 
@@ -163,3 +169,11 @@ Yazılım mimarilerini teorik olarak öğrenmek pek kolay değildir. Gerçek hay
 ## Bu bölümün kodu
 
 Bu bölüm mimari karşılaştırmaları üzerine ve Java kodu içermiyor; bu yüzden `src` altında bir modülü yok. Bölüm - modül eşlemesinin tamamı için [`src/README.md`](src/README.md).
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+| [Bölüm 05: Optional, Stream API ve Sorgu Tasarımı](java-chapter-05.md#top) | [Ders Notları](README.md#top) | [Bölüm 07: Typed Identity, Static Factory, Factory ve Builder ile Nesne Üretimi](java-chapter-07.md#top) |
+<!-- nav:bottom:end -->

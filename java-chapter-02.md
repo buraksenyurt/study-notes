@@ -1,4 +1,10 @@
+<a id="top"></a>
+
 # Bölüm 02: Git Pratikleri, Anemik Model ve Record'lar
+
+<!-- nav:top:start -->
+[← Bölüm 01](java-chapter-01.md#top) · [İçindekiler](README.md#top) · [Bölüm 03 →](java-chapter-03.md#top)
+<!-- nav:top:end -->
 
 Bu hafta ele aldığımız konular ve detayları aşağıda bulabilirsiniz.
 
@@ -561,3 +567,11 @@ mvn -pl week02-anemic-model-and-records -am test
 ```
 
 Bölümün sonundaki `invokedynamic` / `ObjectMethods.bootstrap` denemeleri modüle alınmadı; JDK iç API'lerine eriştikleri için jshell üzerinden çalıştırılıyorlar.
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+| [Bölüm 01: Gitflow ve İlk İş Nesnesi](java-chapter-01.md#top) | [Ders Notları](README.md#top) | [Bölüm 03: Money Value Object ve Rich Entity Tasarımı](java-chapter-03.md#top) |
+<!-- nav:bottom:end -->

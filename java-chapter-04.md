@@ -1,4 +1,10 @@
+<a id="top"></a>
+
 # Bölüm 04: Aggregate Sınırları, State Machine ve Domain Exception'lar
+
+<!-- nav:top:start -->
+[← Bölüm 03](java-chapter-03.md#top) · [İçindekiler](README.md#top) · [Bölüm 05 →](java-chapter-05.md#top)
+<!-- nav:top:end -->
 
 İş nesnelerini incelemek için işe Customer tasarımı ile başlamıştık. İlk tasarım birçok kusuru içermekteydi. Elimizdeki materyaller ve kavramlar arttıkça iş nesnelerinin daha sağlam ve güvenilir bir şekilde tasarlanabileceğini fark ediyoruz. Kobay veritabanımız Northwind'in Customers tablosunu ifade edecek sınıf tasarımını yeniden değerlendirelim. Domain kuralına göre her customerın ID bilgisinin 5 karakterden oluşan bir değer olması bekleniyor *(ALFKI, VINET gibi)*. Ayrıca artık bir müşterinin adres bilgisine ait detaylar domain katmanında Address tipi ile ifade edilmekte. Bunlara ek diğer iş kuralları ile birlikte Customer sınıfını bir aggregate olarak ele alabiliriz.
 
@@ -781,3 +787,11 @@ Bu dersle ilgili olarak bizi araştırmaya itecek soruları aşağıda bulabilir
 cd src
 mvn -pl week04-aggregate-and-state-machine -am test
 ```
+
+<!-- nav:bottom:start -->
+---
+
+| ← Önceki Bölüm | İçindekiler | Sonraki Bölüm → |
+| :--- | :---: | ---: |
+| [Bölüm 03: Money Value Object ve Rich Entity Tasarımı](java-chapter-03.md#top) | [Ders Notları](README.md#top) | [Bölüm 05: Optional, Stream API ve Sorgu Tasarımı](java-chapter-05.md#top) |
+<!-- nav:bottom:end -->
