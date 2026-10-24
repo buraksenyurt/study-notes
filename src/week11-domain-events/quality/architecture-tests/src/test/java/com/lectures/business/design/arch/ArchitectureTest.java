@@ -1,5 +1,7 @@
 package com.lectures.business.design.arch;
 
+import com.lectures.business.design.sales.domain.Order;
+import com.lectures.business.design.shared.kernel.DomainEvent;
 import com.lectures.business.design.shared.kernel.DomainException;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -93,4 +95,21 @@ class ArchitectureTest {
             .orShould().callMethod(LocalDateTime.class, "now")
             .orShould().callMethod(Instant.class, "now")
             .orShould().callMethod(System.class, "currentTimeMillis");
+
+    // ADR-0007 Domain Events
+    @ArchTest
+    static final ArchRule domain_events_are_records = classes()
+            .that().implement(DomainEvent.class)
+            .and().areNotInterfaces()
+            .should().beAssignableTo(Record.class);
+
+    @ArchTest
+    static final ArchRule domain_events_live_in_the_domain = classes()
+            .that().implement(DomainEvent.class)
+            .should().resideInAnyPackage("..sales.domain..", "..shared.kernel..");
+
+    @ArchTest
+    static final ArchRule only_application_pulls_events = noClasses()
+            .that().resideOutsideOfPackage("..sales.application..")
+            .should().callMethod(Order.class, "pullEvents");
 }
